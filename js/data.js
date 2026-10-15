@@ -32,7 +32,7 @@ async function loadConversionSummaries(){
 async function loadRowsForDate(date){
   if(rowsCache[date]) return rowsCache[date];
   const raw = await fetchAllRows('day_rows', date);
-  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, phone:r.phone, disposition:r.disposition, talkSec:r.talk_sec, notes:r.notes, form:r.form||{}}));
+  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}));
   rowsCache[date]=rows; return rows;
 }
 async function loadRowsForRange(){
@@ -43,7 +43,7 @@ async function loadRowsForRange(){
 async function loadConvRowsForDate(date){
   if(convRowsCache[date]) return convRowsCache[date];
   const raw = await fetchAllRows('conversion_rows', date);
-  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, city:r.city, type:r.type, phone:r.phone}));
+  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, city:r.city, type:r.type}));
   convRowsCache[date]=rows; return rows;
 }
 async function loadConvRowsForRange(){

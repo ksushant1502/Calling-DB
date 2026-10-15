@@ -5,6 +5,8 @@ async function init(){
   await initAuth();
   renderRoleBadge();
   renderUploadControls();
+  showOrHideGate();
+  if(!session) return;          // nothing loads until someone signs in
   await refreshTab();
 }
 
@@ -59,7 +61,7 @@ function setRange(start,end,label){ range={start,end,label}; renderFilterControl
 
 function renderUploadControls(){
   const el = document.getElementById('uploadControls');
-  if(!canWrite){ el.innerHTML = `<button id="loginBtn" class="primary">Editor Login</button>`; document.getElementById('loginBtn').onclick=openLoginModal; return; }
+  if(!canWrite){ el.innerHTML = session ? `<button id="logoutBtn">Sign Out</button>` : ''; if(session) document.getElementById('logoutBtn').onclick=logout; return; }
   el.innerHTML = `<button class="primary" id="uploadCallBtn">＋ Upload Calling CSV</button><button id="uploadConvBtn">＋ Upload Conversion CSV</button><button id="logoutBtn">Log Out</button>`;
   el.querySelector('#uploadCallBtn').onclick = openUploadModal;
   el.querySelector('#uploadConvBtn').onclick = openConversionUploadModal;

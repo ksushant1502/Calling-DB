@@ -7,14 +7,7 @@ async function renderFlags(){
   const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob));
   const flagged = [];
   rows.forEach(r=>{
-    const reasons=[];
-    const notesLower = (r.notes||'').toLowerCase();
-    const dispLower = (r.disposition||'').toLowerCase();
-    if(isConnect(r.disposition) && r.talkSec>0 && r.talkSec<30) reasons.push('short_connect');
-    if(keywordHit([notesLower,dispLower], MISCONDUCT_KEYWORDS)) reasons.push('misconduct');
-    if(keywordHit([dispLower], CALLBACK_KEYWORDS)) reasons.push('callback');
-    if(isConnect(r.disposition) && (!r.form || Object.keys(r.form).length===0)) reasons.push('form_not_filled');
-    if(keywordHit([notesLower,dispLower], HOT_KEYWORDS)) reasons.push('hot_convert');
+    const reasons = r.flags||[];   // worked out at upload time; raw notes/phone are never stored
     if(reasons.length) flagged.push({...r, reasons});
   });
 
@@ -38,16 +31,16 @@ async function renderFlags(){
     const active = [...document.querySelectorAll('.flagCk:checked')].map(c=>c.value);
     const show = flagged.filter(f=>f.reasons.some(r=>active.includes(r)));
     document.getElementById('flagsTableTitle').textContent = active.length===Object.keys(chipMeta).length ? '' : `— ${show.length.toLocaleString()} matching call${show.length===1?'':'s'}`;
-    let t = `<table><thead><tr><th>Agent</th><th>Campaign</th><th>Phone</th><th>Disposition</th><th>Talk (s)</th><th>Notes</th><th>Flags</th></tr></thead><tbody>`;
+    let t = `<table><thead><tr><th>Agent</th><th>Campaign</th><th>Call ID</th><th>Disposition</th><th>Talk (s)</th><th>Flags</th></tr></thead><tbody>`;
     show.slice(0,500).forEach(f=>{
-      t += `<tr><td>${escapeHtml(f.agent||'—')}</td><td>${escapeHtml(f.campaign||'—')}</td><td>${escapeHtml(f.phone||'—')}</td><td>${escapeHtml(f.disposition||'—')}</td><td>${f.talkSec||0}</td><td>${escapeHtml(f.notes||'—')}</td><td>${f.reasons.map(r=>`<span class="flag-chip ${chipMeta[r][0]}">${chipMeta[r][1]}</span>`).join(' ')}</td></tr>`;
+      t += `<tr><td>${escapeHtml(f.agent||'—')}</td><td>${escapeHtml(f.campaign||'—')}</td><td>${escapeHtml(f.callId||'—')}</td><td>${escapeHtml(f.disposition||'—')}</td><td>${f.talkSec||0}</td><td>${f.reasons.map(r=>`<span class="flag-chip ${chipMeta[r][0]}">${chipMeta[r][1]}</span>`).join(' ')}</td></tr>`;
     });
     t += `</tbody></table>`;
     if(show.length===0) t = `<div class="empty-state">No calls match the selected flag(s).</div>`;
     if(show.length>500) t += `<div class="hint">Showing first 500 of ${show.length} flagged calls.</div>`;
     document.getElementById('flagsTableWrap').innerHTML = t;
     const expBtn = document.getElementById('exportFlags');
-    if(expBtn) expBtn.onclick = ()=> downloadCsv('flags_export.csv', ['agent','campaign','phone','disposition','talkSec','notes','reasons'], show.map(f=>({...f, reasons:f.reasons.join('|')})));
+    if(expBtn) expBtn.onclick = ()=> downloadCsv('flags_export.csv', ['agent','campaign','callId','disposition','talkSec','reasons'], show.map(f=>({...f, reasons:f.reasons.join('|')})));
   }
   document.querySelectorAll('.flagCk').forEach(ck=>ck.onchange=renderTable);
   document.querySelectorAll('.kpi-clickable').forEach(kpi=>{

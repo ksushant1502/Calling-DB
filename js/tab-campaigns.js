@@ -68,6 +68,6 @@ async function loadCityDisposition(){
   });
   box.innerHTML = h + '</tbody></table>';
   if(canWrite) box.querySelectorAll('[data-disp]').forEach(btn=>{
-    btn.onclick = ()=>{ const d=btn.getAttribute('data-disp'); downloadCsv(`city_${d}.csv`.replace(/[^\w.-]/g,'_'), ['agent','campaign','phone','disposition','talkSec','notes'], byDisp[d]); };
+    btn.onclick = ()=>{ const d=btn.getAttribute('data-disp'); downloadCsv(`city_${d}.csv`.replace(/[^\w.-]/g,'_'), ['agent','campaign','callId','disposition','talkSec'], byDisp[d]); };
   });
 }

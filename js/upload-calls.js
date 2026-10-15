@@ -75,11 +75,10 @@ function openMappingModal(){
       <div class="field"><label>Disposition column *</label><select id="mapDisposition">${opts(guess.disposition)}</select></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Phone column</label><select id="mapPhone">${opts(guess.phone)}</select></div>
       <div class="field"><label>Talk time column</label><select id="mapTalktime">${opts(guess.talktime)}</select></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Notes column</label><select id="mapNotes">${opts(guess.notes)}</select></div>
+      <div class="field"><label>Notes column (only used to detect flags, never saved)</label><select id="mapNotes">${opts(guess.notes)}</select></div>
       <div class="field"><label>LOB/Type column (optional, per-row override)</label><select id="mapLob">${opts(guess.lobcol)}</select></div>
     </div>
     <div class="field-row">
@@ -135,7 +134,6 @@ function processRows(rows, map, defaultLob, defaultCity){
     const agent = map.agent ? normalizeAgent(row[map.agent]) : 'Unknown';
     const disp = row[map.disposition]||'';
     const callId = map.callid ? String(row[map.callid]||'').trim() : '';
-    const phone = map.phone ? String(row[map.phone]||'').trim() : '';
     const talkSec = map.talktime ? parseTalkTime(row[map.talktime]) : 0;
     const notes = map.notes ? String(row[map.notes]||'').trim() : '';
     const known = isIncomingCampaign ? {lob:'Incoming', city:INCOMING_CALLERS[rawAgent]} : lookupLobCity(campaign, row['Custom_Field_1']);
@@ -167,14 +165,16 @@ function processRows(rows, map, defaultLob, defaultCity){
       if(connected){ agentLobConnectedCallIdSets[alKey]=agentLobConnectedCallIdSets[alKey]||new Set(); agentLobConnectedCallIdSets[alKey].add(callId); }
     }
 
+    // PRIVACY: phone and notes are read here only to work out the flags. They are NOT saved anywhere.
     const notesLower=notes.toLowerCase(), dispLower=String(disp).toLowerCase();
-    if(connected && talkSec>0 && talkSec<30) flagCounts.short_connect++;
-    if(keywordHit([notesLower,dispLower], MISCONDUCT_KEYWORDS)) flagCounts.misconduct++;
-    if(keywordHit([dispLower], CALLBACK_KEYWORDS)) flagCounts.callback++;
-    if(connected && Object.keys(form).length===0) flagCounts.form_not_filled++;
-    if(keywordHit([notesLower,dispLower], HOT_KEYWORDS)) flagCounts.hot_convert++;
+    const reasons=[];
+    if(connected && talkSec>0 && talkSec<30){ flagCounts.short_connect++; reasons.push('short_connect'); }
+    if(keywordHit([notesLower,dispLower], MISCONDUCT_KEYWORDS)){ flagCounts.misconduct++; reasons.push('misconduct'); }
+    if(keywordHit([dispLower], CALLBACK_KEYWORDS)){ flagCounts.callback++; reasons.push('callback'); }
+    if(connected && Object.keys(form).length===0){ flagCounts.form_not_filled++; reasons.push('form_not_filled'); }
+    if(keywordHit([notesLower,dispLower], HOT_KEYWORDS)){ flagCounts.hot_convert++; reasons.push('hot_convert'); }
 
-    compactRows.push({agent,campaign,lob,city,callId,phone,disposition:disp,talkSec,notes,form});
+    compactRows.push({agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form});
   });
   Object.keys(campaigns).forEach(c=>{ campaigns[c].uniqueCallIds = callIdSets[c]?callIdSets[c].size:0; });
   Object.keys(agents).forEach(agent=>{
@@ -191,7 +191,7 @@ function confirmMapping(){
   const map = {
     agent:document.getElementById('mapAgent').value, campaign:document.getElementById('mapCampaign').value,
     callid:document.getElementById('mapCallId').value,
-    phone:document.getElementById('mapPhone').value, disposition:document.getElementById('mapDisposition').value,
+    phone:'', disposition:document.getElementById('mapDisposition').value,
     talktime:document.getElementById('mapTalktime').value, notes:document.getElementById('mapNotes').value,
     lobcol:document.getElementById('mapLob').value, citycol:document.getElementById('mapCity').value,
     datecol:document.getElementById('mapDateCol').value,
@@ -325,7 +325,7 @@ function showPreview(daySummaries){
         if(upErr) throw upErr;
         await replaceRows('day_rows', summary.date, summary.compactRows.map(r=>({
           date: summary.date, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city||null,
-          call_id:r.callId||null, phone:r.phone||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, notes:r.notes||null, form:r.form||{}
+          call_id:r.callId||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, flags:r.flags||null, form:r.form||{}
         })));
         delete rowsCache[summary.date];
       }

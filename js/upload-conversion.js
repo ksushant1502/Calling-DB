@@ -46,7 +46,6 @@ function openConvMappingModal(){
     </div>
     <div class="field-row">
       <div class="field"><label>conversion_flag column *</label><select id="cmFlag">${opts(guess.flag)}</select></div>
-      <div class="field"><label>Phone column</label><select id="cmPhone">${opts(guess.phone)}</select></div>
     </div>
     <div class="hint">Only rows where the flag column equals 1 (or "1"/"true") are counted as conversions — matches the confirmed rule (conversion_flag=1 only, not paid_flag).</div>
     <div class="modal-actions"><button id="backConv">Back</button><button class="primary" id="confirmConvMap">Preview & Save</button></div>
@@ -59,7 +58,7 @@ function confirmConvMapping(){
   const map = {
     agent:document.getElementById('cmAgent').value, campaign:document.getElementById('cmCampaign').value,
     city:document.getElementById('cmCity').value, type:document.getElementById('cmType').value,
-    flag:document.getElementById('cmFlag').value, phone:document.getElementById('cmPhone').value,
+    flag:document.getElementById('cmFlag').value, phone:'',
   };
   if(!map.agent || !map.campaign || !map.flag){ toast('Agent, Campaign and conversion_flag columns are required'); return; }
   const date = document.getElementById('convDate').value || todayStr();
@@ -75,13 +74,12 @@ function confirmConvMapping(){
     const city = map.city ? (row[map.city]||'').trim() : '';
     let type = map.type ? String(row[map.type]||'').trim().toLowerCase() : '';
     if(type.includes('new')) type='new'; else if(type.includes('renew')) type='renewal'; else type='other';
-    const phone = map.phone ? String(row[map.phone]||'').trim() : '';
     total++;
     byAgent[agent]=byAgent[agent]||{count:0}; byAgent[agent].count++;
     byCampaign[campaign]=byCampaign[campaign]||{count:0}; byCampaign[campaign].count++;
     if(city){ byCity[city]=byCity[city]||{count:0}; byCity[city].count++; }
     byType[type] = (byType[type]||0)+1;
-    rows.push({agent,campaign,city,type,phone});
+    rows.push({agent,campaign,city,type});
   });
   const summary = {date, fileName:pendingConvParsed.fileName, totalConversions:total, byAgent, byCampaign, byCity, byType};
   showConvPreview(summary, rows);
@@ -111,7 +109,7 @@ function showConvPreview(summary, rows){
         uploaded_at: new Date().toISOString(), uploaded_by: uid
       }, {onConflict:'date'});
       if(upErr) throw upErr;
-      await replaceRows('conversion_rows', summary.date, rows.map(r=>({date:summary.date, agent:r.agent, campaign:r.campaign, city:r.city||null, type:r.type||null, phone:r.phone||null})));
+      await replaceRows('conversion_rows', summary.date, rows.map(r=>({date:summary.date, agent:r.agent, campaign:r.campaign, city:r.city||null, type:r.type||null})));
       delete convRowsCache[summary.date];
       toast('Saved conversion data for '+summary.date);
       root.innerHTML='';
