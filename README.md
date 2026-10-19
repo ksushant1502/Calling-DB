@@ -26,3 +26,7 @@ Upload index.html + css/ + js/ to the GitHub repo (same folder structure). GitHu
 ## Two kinds of report: campaign vs queue
 Enterprise, Survey and City calling are dialled through **campaigns** (Campaign_Name column). Retention calling is dialled through **queues** (Queue_Name column).
 In the upload window choose "Campaign report" or "Queue report (Retention)". Queue reports are saved in their own tables (`queue_days`, `queue_day_rows`) so they never overwrite a campaign upload for the same date; the dashboard adds the two together per day. The five retention queues are listed in `QUEUE_NAMES` and `CAMPAIGN_MAP` in `js/config.js`. Run `supabase_queue.sql` once to create the tables.
+
+
+## Conversion uploads
+The conversion upload takes a From / To date (or blank = every date in the file). Each conversion is counted on the Date column chosen on the mapping screen (default `campaign_date`, the day of the call). A row counts only if (1) `conversion_flag = 1`, (2) the disposition is a connected call, and (3) payment date and payment time are both present. `reservation_activation` = New, `reservation_extension` = Renewal. City codes (BLR, DEL, …) are shown as city names.

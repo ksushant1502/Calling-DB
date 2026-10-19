@@ -67,7 +67,11 @@ function isRsaAgent(name){ return RSA_AGENTS.has(String(name||'').trim().toLower
 // Any call handled as RSA (disposition or form mentions RSA) is dropped, even on a normal campaign.
 function isRsaRow(row){ return /rsa/i.test(String(row['Disposition']||'')) || /rsa/i.test(String(row['Form_Header']||'')); }
 // These names are only excluded from the CAMPAIGN report; in the QUEUE report they are the Retention queues and are kept.
-function isExcludedCampaign(name, source){ return source!=='queue' && EXCLUDED_CAMPAIGNS.has(String(name||'').trim()); }
+function isExcludedCampaign(name, source){
+  const n=String(name||'').trim();
+  if(!EXCLUDED_CAMPAIGNS.has(n)) return false;
+  return !(source==='queue' && QUEUE_NAMES.has(n));   // the retention queues are only kept for queue reports / conversions
+}
 
 // Campaign -> [LOB, city]. city: '' = none, null = take from Custom_Field_1 city code (BLR/DEL/GGN/NOI), 'RAW' = Custom_Field_1 is the city name.
 const CAMPAIGN_MAP = {
