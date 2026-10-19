@@ -1,6 +1,11 @@
 // ===== ROUTER: loads the data a page needs, then draws that page =====
 async function refreshTab(){
   renderLoading();
+  if(activeTab==='uploads'){
+    document.getElementById('rangeSummary').textContent = `${range.start} → ${range.end}`;
+    await renderUploadStatus();
+    return;
+  }
   if(activeTab!=='conversion'){
     dayDocs = await loadDaySummaries();
   }
@@ -9,7 +14,6 @@ async function refreshTab(){
   }
   const n = (activeTab==='conversion' ? conversionDocs : dayDocs).length;
   document.getElementById('rangeSummary').textContent = `${range.start} → ${range.end} · ${n} day${n===1?'':'s'} with data`;
-  renderCoverage();
   switch(activeTab){
     case 'overview':   renderOverview(); break;
     case 'campaigns':  renderCampaigns(); break;

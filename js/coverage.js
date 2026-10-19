@@ -1,20 +1,19 @@
-// ===== COVERAGE: green/red uploaded-vs-missing day strip (one row per report type) =====
-async function renderCoverage(){
-  const el=document.getElementById('coverage'); if(!el) return;
-  const showConv = activeTab==='conversion';
+// ===== PAGE 7: Upload Status — which dates have each report uploaded (green) or missing (red) =====
+async function renderUploadStatus(){
+  const app=document.getElementById('app');
   const pull = (table)=> sb.from(table).select('date,file_name,uploaded_at').gte('date',range.start).lte('date',range.end);
-
-  // which reports to show a row for
-  const rowsDef = showConv
-    ? [{label:'Conversion data', table:'conversion'}]
-    : [{label:'Campaign report', table:SOURCES.calls.days}, {label:'Queue report', table:SOURCES.queue.days}];
+  const rowsDef = [
+    {label:'Campaign report', note:'Enterprise, Survey and City calling', table:SOURCES.calls.days},
+    {label:'Queue report',    note:'Retention calling',                    table:SOURCES.queue.days},
+    {label:'Conversion data', note:'Conversion file',                      table:'conversion'},
+  ];
   const results = await Promise.all(rowsDef.map(r=>pull(r.table)));
-  if(results[0].error){ el.innerHTML=''; return; }
+  if(results[0].error){ app.innerHTML=`<div class="empty-state">Could not load upload status: ${escapeHtml(results[0].error.message)}</div>`; return; }
 
   const out=[]; let d=new Date(range.start+'T00:00:00Z'); const end=new Date(range.end+'T00:00:00Z'); let guard=0;
   while(d<=end && guard++<400){ out.push(d.toISOString().slice(0,10)); d=new Date(d.getTime()+86400000); }
 
-  el.innerHTML = rowsDef.map((def,i)=>{
+  const sections = rowsDef.map((def,i)=>{
     const have = {}; ((results[i].data)||[]).forEach(r=>have[r.date]=r);
     const missing = out.filter(x=>!have[x]).length;
     const chips = out.map(x=>{
@@ -23,6 +22,12 @@ async function renderCoverage(){
       const tip = r ? `${def.label} uploaded${r.file_name?': '+r.file_name:''}${r.uploaded_at?' ('+new Date(r.uploaded_at).toLocaleString()+')':''}` : `No ${def.label.toLowerCase()} uploaded for this date`;
       return `<span class="cv-chip ${r?'ok':'miss'}" title="${escapeHtml(tip)}">${lbl}<small>${r?'✓ uploaded':'missing'}</small></span>`;
     }).join('');
-    return `<div class="cv-row"><span class="cv-label">${def.label}:</span>${chips}<span class="cv-legend">${out.length-missing} uploaded · ${missing} missing</span></div>`;
+    return `<div class="section">
+      <h2>${def.label} <span style="font-weight:500;color:var(--text-dim);font-size:13px;">— ${def.note}</span>
+        <span class="cv-legend" style="margin-left:auto;">${out.length-missing} uploaded · ${missing} missing</span></h2>
+      <div class="cv-row" style="margin-bottom:0;">${chips}</div>
+    </div>`;
   }).join('');
+
+  app.innerHTML = sections + `<div class="hint">Green = data uploaded for that date. Red = nothing uploaded yet. Change the dates at the top right to check a different period. A day with no calls (for example a holiday) also shows as missing. Hover over a green box to see the file name and when it was uploaded.</div>`;
 }

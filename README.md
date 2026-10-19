@@ -30,3 +30,7 @@ In the upload window choose "Campaign report" or "Queue report (Retention)". Que
 
 ## Conversion uploads
 The conversion upload takes a From / To date (or blank = every date in the file). Each conversion is counted on the Date column chosen on the mapping screen (default `campaign_date`, the day of the call). A row counts only if (1) `conversion_flag = 1`, (2) the disposition is a connected call, and (3) payment date and payment time are both present. `reservation_activation` = New, `reservation_extension` = Renewal. City codes (BLR, DEL, …) are shown as city names.
+
+
+## Upload Status page
+The green/red "which dates are uploaded" boxes now live on their own sidebar page, **Upload Status** (below Conversions), with one section each for the campaign report, the queue report and the conversion file. The code is in `js/coverage.js`.

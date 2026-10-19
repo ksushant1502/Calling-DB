@@ -19,6 +19,7 @@ const ICONS = {
   insights:'<svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg>',
   flags:'<svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
   conversion:'<svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+  uploads:'<svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></svg>',
 };
 // Sidebar pages, in order. To add a page: add it here, create js/tab-<name>.js, add a case in js/router.js.
 const TABS = [
@@ -28,6 +29,7 @@ const TABS = [
   {id:'insights',   label:'Insights & VoC', title:'Insights & Voice of Customer'},
   {id:'flags',      label:'Flags',          title:'Call Flags'},
   {id:'conversion', label:'Conversions',    title:'Conversions'},
+  {id:'uploads',    label:'Upload Status',  title:'Upload Status'},
 ];
 
 // phone/notes are only stored and shown when login is on and the person is an editor
