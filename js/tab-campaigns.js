@@ -23,7 +23,7 @@ function renderCampaigns(){
     const maxDials = rows[0].dials||1;
     html += `<div class="tgroup ${collapsedTypes[t.id]?'collapsed':''}" data-type="${t.id}" style="--tc:${t.color}">
       <div class="tgroup-head" data-toggle="${t.id}">
-        <div class="tgroup-title"><span class="caret">▾</span>${t.label}<span style="font-size:12px;font-weight:600;color:var(--text-dim);">${rows.length} campaign${rows.length===1?'':'s'}</span></div>
+        <div class="tgroup-title"><span class="caret">▾</span>${t.label}<span style="font-size:12px;font-weight:600;color:var(--text-dim);">${rows.length} ${t.id==='retention'?'queue':'campaign'}${rows.length===1?'':'s'}</span></div>
         <div class="tg-stat"><div class="v">${dials.toLocaleString()}</div><div class="l">Dials</div></div>
         <div class="tg-stat"><div class="v">${connects.toLocaleString()}</div><div class="l">Connects</div></div>
         <div class="tg-stat"><div class="v ${pctClass(pct)}">${fmtPct(pct)}</div><div class="l">Conn %</div></div>
@@ -35,9 +35,9 @@ function renderCampaigns(){
         ['all',...CITIES].map(c=>`<button class="chip ${campaignCity===c?'active':''}" data-city="${c}">${c==='all'?'All cities':c}</button>`).join('')+
         `<button id="cityDispBtn" style="margin-left:auto;">Disposition breakdown</button></div><div id="cityDisp"></div>`;
     }
-    html += `<table><thead><tr><th>Campaign</th><th>Type</th><th class="num">Dials</th><th>Share of type</th><th class="num">Connects</th><th class="num">Conn %</th><th class="num">Conversions</th><th class="num">Unique Call IDs</th></tr></thead><tbody>`;
+    html += `<table><thead><tr><th>${t.id==='retention'?'Queue / Campaign':'Campaign'}</th><th>Type</th><th class="num">Dials</th><th>Share of type</th><th class="num">Connects</th><th class="num">Conn %</th><th class="num">Conversions</th><th class="num">Unique Call IDs</th></tr></thead><tbody>`;
     rows.forEach(c=>{
-      html += `<tr><td>${escapeHtml(c.name)}</td><td><span class="type-pill ${LOB_CLASS[c.lob]||'type-other'}">${c.lob||'—'}</span></td>
+      html += `<tr><td>${escapeHtml(c.name)}${QUEUE_NAMES.has(c.name)?' <span class="queue-tag">queue</span>':''}</td><td><span class="type-pill ${LOB_CLASS[c.lob]||'type-other'}">${c.lob||'—'}</span></td>
         <td class="num">${c.dials.toLocaleString()}</td>
         <td><div class="bar-cell"><div class="minibar"><i style="width:${(c.dials/maxDials*100).toFixed(0)}%;background:${t.color}"></i></div></div></td>
         <td class="num">${c.connects.toLocaleString()}</td><td class="num ${pctClass(c.pct)}">${fmtPct(c.pct)}</td>

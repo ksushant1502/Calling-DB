@@ -182,3 +182,6 @@ td.num, th.num{text-align:right;}
 .flag-short{background:#fdf1dc; color:#b8790c;} .flag-misconduct{background:#fde3e3; color:#c23b3b;} .flag-callback{background:#e8f0fe; color:#2f6fed;} .flag-form{background:var(--border); color:var(--text-dim);} .flag-hot{background:#e6f7ea; color:#1a9c5c;}
 .tgroup-body table{table-layout:fixed; min-width:760px;}
 .tgroup-body th:first-child, .tgroup-body td:first-child{width:30%; overflow:hidden; text-overflow:ellipsis;}
+
+.queue-tag{display:inline-block; font-size:10px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; padding:1px 6px; border-radius:6px; margin-left:6px; background:rgba(15,154,148,.12); color:#0f7f7a; vertical-align:middle;}
+.cv-chip small{white-space:nowrap;}

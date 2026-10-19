@@ -1,11 +1,15 @@
 // ===== UPLOAD: daily calling CSV (single or multi-day, column mapping, preview, save) =====
 // ===================== UPLOAD: CALLING DATA =====================
 let pendingParsed=null;
+let uploadSource='calls';   // 'calls' = campaign report, 'queue' = retention queue report
 let uploadFrom='', uploadTo='', uploadDefaultLob='Other', uploadDefaultCity=''; // optional date range chosen on the first screen
 function openUploadModal(){
   const root=document.getElementById('modalRoot');
   root.innerHTML = `<div class="overlay" id="ov1"><div class="modal">
     <h3>Upload Calling CSV</h3>
+    <div class="field"><label>Which report is this?</label>
+      <select id="uploadSource">${Object.entries(SOURCES).map(([k,v])=>`<option value="${k}" ${uploadSource===k?'selected':''}>${v.label}</option>`).join('')}</select>
+      <div class="hint" style="margin-top:6px;">Campaign report = Enterprise, Survey, City calling. Queue report = Retention calling (has a Queue_Name column).</div></div>
     <div class="hint">Choose the first and last date this file covers. Leave both blank to take every date found in the file. Pick the same date in both to save the whole file as one day.</div>
     <div class="field-row">
       <div class="field"><label>From date</label><input type="date" id="uploadFrom"></div>
@@ -27,6 +31,7 @@ function openUploadModal(){
 }
 function handleFileSelect(e){
   const file=e.target.files[0]; if(!file) return;
+  uploadSource=document.getElementById('uploadSource').value;
   uploadDefaultLob=document.getElementById('uploadLob').value; uploadDefaultCity=document.getElementById('uploadCity').value;
   uploadFrom=document.getElementById('uploadFrom').value; uploadTo=document.getElementById('uploadTo').value;
   if(uploadFrom && uploadTo && uploadFrom>uploadTo){ [uploadFrom,uploadTo]=[uploadTo,uploadFrom]; }
@@ -48,9 +53,9 @@ function guessColumn(headers,keywords){
 
 function openMappingModal(){
   const headers=pendingParsed.headers;
-  const savedMap = JSON.parse(safeGet('yulu_col_map_v2_'+headers.join('|').slice(0,100))||'null');
+  const savedMap = JSON.parse(safeGet('yulu_col_map_v3_'+headers.join('|').slice(0,100))||'null');
   const guess = savedMap || {
-    agent:guessColumn(headers,['agent_username','agent']), campaign:guessColumn(headers,['campaign_name','campaign']),
+    agent:guessColumn(headers,['agent_username','agent']), campaign:guessColumn(headers,['campaign_name','queue_name','campaign','queue']),
     callid:guessColumn(headers,['call_id','call id','callid']),
     phone:guessColumn(headers,['customer_ph_number','phone','mobile','number']), disposition:guessColumn(headers,['disposition']),
     talktime:guessColumn(headers,['talk','duration']), notes:guessColumn(headers,['note','remark','comment']),
@@ -116,7 +121,7 @@ function parseDateToYMD(v){
 // flag counts) over one array of raw CSV rows — used once per day when a file is split across
 // multiple dates, or once for the whole file when it isn't.
 const unmappedCampaigns = new Set();
-function processRows(rows, map, defaultLob, defaultCity){
+function processRows(rows, map, defaultLob, defaultCity, source){
   const campaigns={}, agents={};
   const callIdSets={};
   const agentLobCallIdSets={}, agentLobConnectedCallIdSets={};
@@ -126,7 +131,7 @@ function processRows(rows, map, defaultLob, defaultCity){
 
   rows.forEach(row=>{
     const campaign=(row[map.campaign]||'Unknown').trim();
-    if(isExcludedCampaign(campaign)) return;
+    if(isExcludedCampaign(campaign, source)) return;
     const rawAgent = map.agent ? String(row[map.agent]||'').trim().toLowerCase() : '';
     const isIncomingCampaign = campaign===INCOMING_CAMPAIGN;
     if(isIncomingCampaign && !INCOMING_CALLERS[rawAgent]) return;   // incoming calls count only for the city-line callers; the rest is RSA
@@ -200,7 +205,7 @@ function confirmMapping(){
     formcols: [...document.querySelectorAll('.formCk:checked')].map(c=>c.value)
   };
   if(!map.campaign || !map.disposition){ toast('Campaign and Disposition columns are required'); return; }
-  safeSet('yulu_col_map_v2_'+pendingParsed.headers.join('|').slice(0,100), JSON.stringify(map));
+  safeSet('yulu_col_map_v3_'+pendingParsed.headers.join('|').slice(0,100), JSON.stringify(map));
 
   const defaultLob = uploadDefaultLob;
   const defaultCity = uploadDefaultCity;
@@ -229,7 +234,7 @@ function confirmMapping(){
   unmappedCampaigns.clear();
   const daySummaries = dates.map(date=>{
     const rows = groups[date];
-    const agg = processRows(rows, map, defaultLob, defaultCity);
+    const agg = processRows(rows, map, defaultLob, defaultCity, uploadSource);
     return {
       date, fileName:pendingParsed.fileName, totalRows:rows.length, excludedRows:rows.length-agg.compactRows.length,
       totalDials:agg.totalDials, totalConnects:agg.totalConnects, campaigns:agg.campaigns, agents:agg.agents,
@@ -237,6 +242,12 @@ function confirmMapping(){
     };
   });
 
+  if(daySummaries.every(d=>d.totalDials===0)){
+    toast(uploadSource==='calls'
+      ? 'Every row was skipped. If this is the Retention queue file, go back and choose "Queue report".'
+      : 'Every row was skipped — check the Queue / Agent column mapping.');
+    return;
+  }
   showPreview(daySummaries);
 }
 
@@ -293,7 +304,7 @@ function showPreview(daySummaries){
   document.getElementById('ov3').addEventListener('click',e=>{ if(e.target.id==='ov3') root.innerHTML=''; });
 
   let anyExists = false;
-  Promise.all(daySummaries.map((summary,idx)=>checkExisting('days', summary.date).then(exists=>{
+  Promise.all(daySummaries.map((summary,idx)=>checkExisting(SOURCES[uploadSource].days, summary.date).then(exists=>{
     if(exists) anyExists = true;
     if(multi){
       const cell = document.getElementById(`overwriteCell_${idx}`);
@@ -318,19 +329,19 @@ function showPreview(daySummaries){
       for(let i=0;i<daySummaries.length;i++){
         const summary = daySummaries[i];
         progress.textContent = `Saving ${summary.date} (${i+1} of ${daySummaries.length})…`;
-        const { error: upErr } = await sb.from('days').upsert({
+        const { error: upErr } = await sb.from(SOURCES[uploadSource].days).upsert({
           date: summary.date, file_name: summary.fileName, total_rows: summary.totalRows, excluded_rows: summary.excludedRows,
           total_dials: summary.totalDials, total_connects: summary.totalConnects,
           campaigns: summary.campaigns, agents: summary.agents, flags_count: summary.flagsCount,
           uploaded_at: new Date().toISOString(), uploaded_by: uid
         }, {onConflict:'date'});
         if(upErr) throw upErr;
-        await replaceRows('day_rows', summary.date, summary.compactRows.map(r=>({
+        await replaceRows(SOURCES[uploadSource].rows, summary.date, summary.compactRows.map(r=>({
           date: summary.date, n:r.n, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city||null,
           call_id:r.callId||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, flags:r.flags||null, form:r.form||{}
         })));
         // phone + notes: separate table, readable by editors only
-        if(REQUIRE_LOGIN) await replaceRows('call_contacts', summary.date, summary.compactRows.filter(r=>r.phone||r.notes).map(r=>({date:summary.date, n:r.n, phone:r.phone||null, notes:r.notes||null})));
+        if(REQUIRE_LOGIN) await replaceRows('call_contacts', summary.date, summary.compactRows.filter(r=>r.phone||r.notes).map(r=>({date:summary.date, source:uploadSource, n:r.n, phone:r.phone||null, notes:r.notes||null})), {source:uploadSource});
         delete rowsCache[summary.date];
       }
       toast(daySummaries.length>1 ? `Saved data for ${daySummaries.length} days` : 'Saved data for '+daySummaries[0].date);
@@ -344,8 +355,10 @@ async function checkExisting(table, date){
   try{ const { data } = await sb.from(table).select('date').eq('date', date).maybeSingle(); return !!data; }catch(e){ return false; }
 }
 
-async function replaceRows(table, date, rows){
-  const { error: delErr } = await sb.from(table).delete().eq('date', date);
+async function replaceRows(table, date, rows, extra){
+  let delQ = sb.from(table).delete().eq('date', date);
+  if(extra) Object.entries(extra).forEach(([k,v])=>{ delQ = delQ.eq(k,v); });
+  const { error: delErr } = await delQ;
   if(delErr) throw delErr;
   const chunkSize = 500;
   for(let i=0;i<rows.length;i+=chunkSize){

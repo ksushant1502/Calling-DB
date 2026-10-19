@@ -21,3 +21,8 @@ Upload index.html + css/ + js/ to the GitHub repo (same folder structure). GitHu
 
 ## Build mode vs login
 `js/config.js` has `REQUIRE_LOGIN`. While it is `false` (build mode) the site opens without a login, anyone with the link can upload, and phone numbers/notes are not saved. When the site is finished: run the "lock again" SQL, create user accounts in Supabase, and set `REQUIRE_LOGIN = true`.
+
+
+## Two kinds of report: campaign vs queue
+Enterprise, Survey and City calling are dialled through **campaigns** (Campaign_Name column). Retention calling is dialled through **queues** (Queue_Name column).
+In the upload window choose "Campaign report" or "Queue report (Retention)". Queue reports are saved in their own tables (`queue_days`, `queue_day_rows`) so they never overwrite a campaign upload for the same date; the dashboard adds the two together per day. The five retention queues are listed in `QUEUE_NAMES` and `CAMPAIGN_MAP` in `js/config.js`. Run `supabase_queue.sql` once to create the tables.

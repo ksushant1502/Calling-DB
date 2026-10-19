@@ -12,14 +12,38 @@ async function fetchAllRows(table, date){
   return all;
 }
 
+function mapDayDoc(r, source){
+  return { date:r.date, fileName:r.file_name, totalRows:r.total_rows||0, excludedRows:r.excluded_rows||0,
+    totalDials:r.total_dials||0, totalConnects:r.total_connects||0,
+    campaigns:r.campaigns||{}, agents:r.agents||{}, flagsCount:r.flags_count||{}, sources:[source] };
+}
+function addCounts(into, from){   // sums {dials,connects,...} style objects, including nested byLob / byCity
+  Object.entries(from||{}).forEach(([k,v])=>{
+    if(v && typeof v==='object'){ into[k]=into[k]||{}; addCounts(into[k], v); }
+    else if(typeof v==='number'){ into[k]=(into[k]||0)+v; }
+    else if(into[k]===undefined){ into[k]=v; }
+  });
+}
+// A date can have a campaign report and a queue report. Dashboard pages see them as one day.
+function mergeDayDocs(a, b){
+  const out = { date:a.date, fileName:[a.fileName,b.fileName].filter(Boolean).join(' + '),
+    totalRows:a.totalRows+b.totalRows, excludedRows:a.excludedRows+b.excludedRows,
+    totalDials:a.totalDials+b.totalDials, totalConnects:a.totalConnects+b.totalConnects,
+    campaigns:{}, agents:{}, flagsCount:{}, sources:[...a.sources,...b.sources] };
+  [a,b].forEach(d=>{
+    addCounts(out.campaigns, d.campaigns); addCounts(out.agents, d.agents); addCounts(out.flagsCount, d.flagsCount);
+  });
+  return out;
+}
 async function loadDaySummaries(){
-  const { data, error } = await sb.from('days').select('*').gte('date',range.start).lte('date',range.end).order('date',{ascending:true});
-  if(error){ console.error(error); toast('Load failed: '+error.message); return []; }
-  return (data||[]).map(r=>({
-    date:r.date, fileName:r.file_name, totalRows:r.total_rows, excludedRows:r.excluded_rows,
-    totalDials:r.total_dials, totalConnects:r.total_connects,
-    campaigns:r.campaigns||{}, agents:r.agents||{}, flagsCount:r.flags_count||{}
-  }));
+  const q = (table)=> sb.from(table).select('*').gte('date',range.start).lte('date',range.end).order('date',{ascending:true});
+  const [c, qu] = await Promise.all([ q(SOURCES.calls.days), q(SOURCES.queue.days) ]);
+  if(c.error){ console.error(c.error); toast('Load failed: '+c.error.message); return []; }
+  if(qu.error){ console.error(qu.error); toast('Queue data could not be loaded (run the queue setup SQL): '+qu.error.message); }
+  const byDate = {};
+  (c.data||[]).forEach(r=>{ byDate[r.date]=mapDayDoc(r,'calls'); });
+  (qu.data||[]).forEach(r=>{ const d=mapDayDoc(r,'queue'); byDate[r.date] = byDate[r.date] ? mergeDayDocs(byDate[r.date], d) : d; });
+  return Object.keys(byDate).sort().map(k=>byDate[k]);
 }
 async function loadConversionSummaries(){
   const { data, error } = await sb.from('conversion').select('*').gte('date',range.start).lte('date',range.end).order('date',{ascending:true});
@@ -31,11 +55,12 @@ async function loadConversionSummaries(){
 }
 async function loadRowsForDate(date){
   if(rowsCache[date]) return rowsCache[date];
-  const raw = await fetchAllRows('day_rows', date);
-  // phone + notes live in a separate table that only editors can read; merge them in by row number
+  const [rawC, rawQ] = await Promise.all([ fetchAllRows(SOURCES.calls.rows, date), fetchAllRows(SOURCES.queue.rows, date) ]);
+  // phone + notes live in a separate table that only editors can read; merge them in by source + row number
   const contacts = (REQUIRE_LOGIN && canWrite) ? await fetchAllRows('call_contacts', date) : [];
-  const byN = {}; contacts.forEach(c=>{ byN[c.n]=c; });
-  const rows = raw.map(r=>({phone:(byN[r.n]||{}).phone||'', notes:(byN[r.n]||{}).notes||'', agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}));
+  const byKey = {}; contacts.forEach(c=>{ byKey[(c.source||'calls')+':'+c.n]=c; });
+  const conv = (r, src)=>{ const k=byKey[src+':'+r.n]||{}; return {phone:k.phone||'', notes:k.notes||'', source:src, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}; };
+  const rows = rawC.map(r=>conv(r,'calls')).concat(rawQ.map(r=>conv(r,'queue')));
   rowsCache[date]=rows; return rows;
 }
 async function loadRowsForRange(){

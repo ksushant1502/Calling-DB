@@ -66,10 +66,17 @@ const INCOMING_CAMPAIGN = 'Incoming Calls';
 function isRsaAgent(name){ return RSA_AGENTS.has(String(name||'').trim().toLowerCase()); }
 // Any call handled as RSA (disposition or form mentions RSA) is dropped, even on a normal campaign.
 function isRsaRow(row){ return /rsa/i.test(String(row['Disposition']||'')) || /rsa/i.test(String(row['Form_Header']||'')); }
-function isExcludedCampaign(name){ return EXCLUDED_CAMPAIGNS.has(String(name||'').trim()); }
+// These names are only excluded from the CAMPAIGN report; in the QUEUE report they are the Retention queues and are kept.
+function isExcludedCampaign(name, source){ return source!=='queue' && EXCLUDED_CAMPAIGNS.has(String(name||'').trim()); }
 
 // Campaign -> [LOB, city]. city: '' = none, null = take from Custom_Field_1 city code (BLR/DEL/GGN/NOI), 'RAW' = Custom_Field_1 is the city name.
 const CAMPAIGN_MAP = {
+  // ---- Retention QUEUES (city comes from Custom_Field_1; Payment failure has no city in the file) ----
+  "Retention calling V1 Q July": ["Retention",null],
+  "Soft Churn Pan India V1": ["Retention",null],
+  "OYC Pan India Q1": ["Retention",null],
+  "D2 Extension V1": ["Retention",null],
+  "Payment failure Pan India 1": ["Retention",""],
   "Instamart WA Attached Token Leads": ["Instamart",""],
   "Instamart Enterprise Leads": ["Instamart",""],
   "Swiggy Merch Manual Campaign NEW MAY 2026": ["Enterprise",""],
@@ -101,7 +108,17 @@ const CAMPAIGN_MAP = {
   "Retention Pending": ["Retention",""],
   "D2 Extension Latest": ["Retention",""],
 };
-const CITY_CODE = {BLR:'Bangalore',DEL:'NCR',GGN:'NCR',NOI:'NCR'};
+const CITY_CODE = {BLR:'Bangalore',DEL:'NCR',GGN:'NCR',NOI:'NCR',HYD:'Hyderabad',BOM:'Mumbai',CCU:'Kolkata'};
+
+// Two kinds of dialer report. Enterprise / Survey / City calls are made through CAMPAIGNS ("calls");
+// Retention calls are made through QUEUES ("queue"). Each kind is stored in its own tables so a queue
+// upload never overwrites a campaign upload for the same date.
+const SOURCES = {
+  calls:{ days:'days',       rows:'day_rows',       label:'Campaign report' },
+  queue:{ days:'queue_days', rows:'queue_day_rows', label:'Queue report (Retention)' }
+};
+// Retention queues (names as they appear in the Queue_Name column)
+const QUEUE_NAMES = new Set(['Retention calling V1 Q July','Soft Churn Pan India V1','OYC Pan India Q1','D2 Extension V1','Payment failure Pan India 1']);
 function lookupLobCity(campaign, customField1){
   const e = CAMPAIGN_MAP[campaign]; if(!e) return null;
   let [lob, city] = e;
