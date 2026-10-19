@@ -21,7 +21,7 @@ async function renderInsights(){
 
   let html = `<div class="filter-bar">
     <select id="insCampaign"><option value="">All Campaigns</option>${campaigns.map(c=>`<option value="${escapeHtml(c)}" ${insightsCampaignFilter===c?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select>
-    <input type="text" id="insSearch" placeholder="Search call ID or agent…" value="${escapeHtml(insightsSearch)}" style="min-width:220px;">
+    <input type="text" id="insSearch" placeholder="Search call ID, agent, phone or notes…" value="${escapeHtml(insightsSearch)}" style="min-width:220px;">
   </div>`;
 
   const qKeys = Object.keys(qa);
@@ -58,18 +58,18 @@ async function renderInsights(){
       if(card) card.classList.add('active');
       let rws = qa[q][ans];
       const search = insightsSearch.toLowerCase();
-      if(search) rws = rws.filter(r=> String(r.callId||'').toLowerCase().includes(search) || (r.agent||'').toLowerCase().includes(search));
+      if(search) rws = rws.filter(r=> String(r.callId||'').toLowerCase().includes(search) || (r.agent||'').toLowerCase().includes(search) || (r.phone||'').toLowerCase().includes(search) || (r.notes||'').toLowerCase().includes(search));
       const section = document.getElementById('insightDrillSection');
       document.getElementById('insightDrillTitle').textContent = `${q} — "${ans}"`;
-      let dhtml = `<table><thead><tr><th>Call ID</th><th>Agent</th><th>Campaign</th><th>Disposition</th></tr></thead><tbody>`;
-      rws.slice(0,300).forEach(r=>{ dhtml+=`<tr><td>${escapeHtml(String(r.callId||'—'))}</td><td>${escapeHtml(r.agent||'—')}</td><td>${escapeHtml(r.campaign||'—')}</td><td>${escapeHtml(r.disposition||'—')}</td></tr>`; });
+      let dhtml = `<table><thead><tr><th>Call ID</th>${hasContacts()?'<th>Phone</th>':''}<th>Agent</th><th>Campaign</th><th>Disposition</th>${hasContacts()?'<th>Notes</th>':''}</tr></thead><tbody>`;
+      rws.slice(0,300).forEach(r=>{ dhtml+=`<tr><td>${escapeHtml(String(r.callId||'—'))}</td>${hasContacts()?`<td>${escapeHtml(r.phone||'—')}</td>`:''}<td>${escapeHtml(r.agent||'—')}</td><td>${escapeHtml(r.campaign||'—')}</td><td>${escapeHtml(r.disposition||'—')}</td>${hasContacts()?`<td>${escapeHtml(r.notes||'—')}</td>`:''}</tr>`; });
       dhtml += `</tbody></table>`;
       if(rws.length>300) dhtml += `<div class="hint">Showing first 300 of ${rws.length} matches.</div>`;
       if(canWrite) dhtml += `<button id="exportInsight" style="margin-top:8px;">⬇ Export CSV (${rws.length})</button>`;
       document.getElementById('insightDrillBody').innerHTML = dhtml;
       section.style.display = '';
       section.scrollIntoView({behavior:'smooth', block:'nearest'});
-      if(canWrite) document.getElementById('exportInsight').onclick = ()=> downloadCsv(`insight_${q}_${ans}.csv`.replace(/[^\w.-]/g,'_'), ['callId','agent','campaign','disposition'], rws);
+      if(canWrite) document.getElementById('exportInsight').onclick = ()=> downloadCsv(`insight_${q}_${ans}.csv`.replace(/[^\w.-]/g,'_'), ['callId','phone','agent','campaign','disposition','notes'], rws);
     };
   });
 }

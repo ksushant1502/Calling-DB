@@ -2,6 +2,7 @@
 const ALLOWED_DOMAIN = 'yulu.bike';
 
 async function initAuth(){
+  if(!REQUIRE_LOGIN){ session=null; canWrite=true; return; }   // build mode: no login
   const { data } = await sb.auth.getSession();
   session = data.session;
   await applySession();
@@ -24,10 +25,11 @@ async function applySession(){
 }
 
 function showOrHideGate(){
+  if(!REQUIRE_LOGIN) return;
   const root = document.getElementById('modalRoot');
   if(session){ if(document.getElementById('ovGate')) root.innerHTML=''; return; }
   root.innerHTML = `<div class="overlay" id="ovGate"><div class="modal" style="max-width:380px;">
-    <div class="brand-logo" style="margin:0 auto 10px;">Y</div>
+    <img src="img/yulu-logo.png" alt="Yulu" style="height:44px;display:block;margin:0 auto 12px;background:#151934;padding:10px 16px;border-radius:12px;">
     <h3 style="text-align:center;">Yulu Telecalling Dashboard</h3>
     <p class="hint" style="text-align:center;">Sign in with the email and password given to you.</p>
     <div class="field"><label>Email</label><input type="email" id="loginEmail" autocomplete="username"></div>

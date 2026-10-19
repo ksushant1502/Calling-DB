@@ -2,6 +2,9 @@
 // ===================== SUPABASE CONFIG =====================
 const SUPABASE_URL = 'https://knnmfgmmlrcetejaktox.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtubm1mZ21tbHJjZXRlamFrdG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5ODkxOTcsImV4cCI6MjEwNjU2NTE5N30.tGkJi61ihHHSmgx1GY1yUELwtDrBAZxwK3JYywdg7Fc';
+// BUILD MODE: false = anyone with the link can view AND upload (no login). Phone numbers / notes are NOT saved in this mode.
+// Set to true once the website is finished and logins are set up (see README, "Turning login on").
+const REQUIRE_LOGIN = false;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===================== CONSTANTS =====================

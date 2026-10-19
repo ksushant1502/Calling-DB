@@ -24,9 +24,11 @@ body{background:var(--bg); color:var(--text); font-family:Inter,-apple-system,Bl
 .sidebar:not(:hover):not(:focus-within) .sidebar-bottom{pointer-events:none;}
 .main{flex:1; min-width:0; margin-left:68px; padding:26px 32px 60px; max-width:1400px;}
 .brand{display:flex; align-items:center; gap:12px; padding:0 5px 22px;}
+.brand-mark{flex:0 0 38px; width:38px; height:auto; display:block;}
+.brand-word{height:30px; width:auto; display:block; margin-bottom:3px;}
 .brand-logo{flex:0 0 38px; width:38px; height:38px; border-radius:11px; background:linear-gradient(135deg,#4d6bff,#9a6bff); color:#fff; font-weight:800; font-size:19px; display:flex; align-items:center; justify-content:center;}
 .brand-title{color:#fff; font-weight:800; font-size:15px; letter-spacing:-.2px;}
-.brand-sub{font-size:11.5px; color:#7f87ad;}
+.brand-sub{font-size:11px; color:#7f87ad;}
 .nav{display:flex; flex-direction:column; gap:3px;}
 .nav-btn{display:flex; align-items:center; gap:12px; width:100%; text-align:left; border:none; background:transparent; color:var(--side-text); padding:11px 14px; border-radius:11px; font-size:14px; font-weight:600; cursor:pointer;}
 .nav-btn svg{width:19px; height:19px; flex:0 0 19px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round;}

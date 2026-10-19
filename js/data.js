@@ -32,7 +32,10 @@ async function loadConversionSummaries(){
 async function loadRowsForDate(date){
   if(rowsCache[date]) return rowsCache[date];
   const raw = await fetchAllRows('day_rows', date);
-  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}));
+  // phone + notes live in a separate table that only editors can read; merge them in by row number
+  const contacts = (REQUIRE_LOGIN && canWrite) ? await fetchAllRows('call_contacts', date) : [];
+  const byN = {}; contacts.forEach(c=>{ byN[c.n]=c; });
+  const rows = raw.map(r=>({phone:(byN[r.n]||{}).phone||'', notes:(byN[r.n]||{}).notes||'', agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}));
   rowsCache[date]=rows; return rows;
 }
 async function loadRowsForRange(){

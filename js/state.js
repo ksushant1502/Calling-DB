@@ -29,3 +29,6 @@ const TABS = [
   {id:'flags',      label:'Flags',          title:'Call Flags'},
   {id:'conversion', label:'Conversions',    title:'Conversions'},
 ];
+
+// phone/notes are only stored and shown when login is on and the person is an editor
+function hasContacts(){ return REQUIRE_LOGIN && canWrite; }

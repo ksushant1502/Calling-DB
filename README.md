@@ -17,3 +17,7 @@ Static site, no build step. Left-sidebar layout; pages in this order:
 
 ## Deploy
 Upload index.html + css/ + js/ to the GitHub repo (same folder structure). GitHub Pages / Netlify publishes it.
+
+
+## Build mode vs login
+`js/config.js` has `REQUIRE_LOGIN`. While it is `false` (build mode) the site opens without a login, anyone with the link can upload, and phone numbers/notes are not saved. When the site is finished: run the "lock again" SQL, create user accounts in Supabase, and set `REQUIRE_LOGIN = true`.

@@ -45,6 +45,7 @@ function openConvMappingModal(){
       <div class="field"><label>Conversion type column (new/renewal)</label><select id="cmType">${opts(guess.type)}</select></div>
     </div>
     <div class="field-row">
+      <div class="field"><label>Phone column</label><select id="cmPhone">${opts(guess.phone)}</select></div>
       <div class="field"><label>conversion_flag column *</label><select id="cmFlag">${opts(guess.flag)}</select></div>
     </div>
     <div class="hint">Only rows where the flag column equals 1 (or "1"/"true") are counted as conversions — matches the confirmed rule (conversion_flag=1 only, not paid_flag).</div>
@@ -58,7 +59,7 @@ function confirmConvMapping(){
   const map = {
     agent:document.getElementById('cmAgent').value, campaign:document.getElementById('cmCampaign').value,
     city:document.getElementById('cmCity').value, type:document.getElementById('cmType').value,
-    flag:document.getElementById('cmFlag').value, phone:'',
+    flag:document.getElementById('cmFlag').value, phone:document.getElementById('cmPhone').value,
   };
   if(!map.agent || !map.campaign || !map.flag){ toast('Agent, Campaign and conversion_flag columns are required'); return; }
   const date = document.getElementById('convDate').value || todayStr();
@@ -79,7 +80,8 @@ function confirmConvMapping(){
     byCampaign[campaign]=byCampaign[campaign]||{count:0}; byCampaign[campaign].count++;
     if(city){ byCity[city]=byCity[city]||{count:0}; byCity[city].count++; }
     byType[type] = (byType[type]||0)+1;
-    rows.push({agent,campaign,city,type});
+    const phone = map.phone ? String(row[map.phone]||'').trim() : '';
+    rows.push({agent,campaign,city,type,phone});
   });
   const summary = {date, fileName:pendingConvParsed.fileName, totalConversions:total, byAgent, byCampaign, byCity, byType};
   showConvPreview(summary, rows);
@@ -109,7 +111,8 @@ function showConvPreview(summary, rows){
         uploaded_at: new Date().toISOString(), uploaded_by: uid
       }, {onConflict:'date'});
       if(upErr) throw upErr;
-      await replaceRows('conversion_rows', summary.date, rows.map(r=>({date:summary.date, agent:r.agent, campaign:r.campaign, city:r.city||null, type:r.type||null})));
+      await replaceRows('conversion_rows', summary.date, rows.map((r,i)=>({date:summary.date, n:i, agent:r.agent, campaign:r.campaign, city:r.city||null, type:r.type||null})));
+      if(REQUIRE_LOGIN) await replaceRows('conversion_contacts', summary.date, rows.map((r,i)=>({date:summary.date, n:i, phone:r.phone||null})).filter(r=>r.phone));
       delete convRowsCache[summary.date];
       toast('Saved conversion data for '+summary.date);
       root.innerHTML='';
