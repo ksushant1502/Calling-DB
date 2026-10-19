@@ -71,7 +71,7 @@ async function loadRowsForRange(){
 async function loadConvRowsForDate(date){
   if(convRowsCache[date]) return convRowsCache[date];
   const raw = await fetchAllRows('conversion_rows', date);
-  const rows = raw.map(r=>({agent:r.agent, campaign:r.campaign, city:r.city, type:r.type}));
+  const rows = raw.map(r=>({date:r.date, agent:r.agent, campaign:r.campaign, city:r.city, type:r.type}));
   convRowsCache[date]=rows; return rows;
 }
 async function loadConvRowsForRange(){

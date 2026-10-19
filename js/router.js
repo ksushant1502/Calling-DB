@@ -20,6 +20,6 @@ async function refreshTab(){
     case 'agents':     await renderAgents(); break;
     case 'insights':   await renderInsights(); break;
     case 'flags':      await renderFlags(); break;
-    case 'conversion': renderConversion(); break;
+    case 'conversion': await renderConversion(); break;
   }
 }
