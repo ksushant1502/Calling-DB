@@ -164,14 +164,21 @@ td.num, th.num{text-align:right;}
 .checklist{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
 .checklist label{display:flex; align-items:center; gap:5px; font-size:12.5px; font-weight:500; background:var(--bg); border:1px solid var(--border); padding:5px 9px; border-radius:8px; cursor:pointer;}
 .admin-only-note{font-size:12.5px; color:var(--text-dim); background:var(--accent-soft); padding:10px 14px; border-radius:8px; margin-bottom:14px;}
-.insight-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; margin-bottom:18px; align-items:start;}
+.insight-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr)); gap:16px; margin-bottom:18px; align-items:start;}
+.insight-card{min-width:0;}
 .insight-card{background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:var(--shadow);}
 .insight-card.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft);}
 .insight-card h3{margin:0 0 4px; font-size:14px; font-weight:700; line-height:1.3;}
 .insight-card .insight-total{font-size:11.5px; color:var(--text-dim); margin-bottom:10px;}
 .insight-bar-row{padding:8px 0; border-bottom:1px solid var(--border); cursor:pointer;}
 .insight-bar-row:last-child{border-bottom:none;}
-.insight-bar-row:hover{background:var(--accent-soft); margin:0 -16px; padding:8px 16px; border-radius:6px;}
+.insight-bar-row:hover .insight-bar-label{color:var(--accent);}
+.insight-bar-row.muted{opacity:.6;}
+.insight-bar-row.muted .insight-bar-track{display:none;}
+.insight-bar-row.muted{padding:6px 0;}
+.insight-bar-count small{font-weight:500; margin-left:4px;}
+.insight-more{background:none; border:none; color:var(--accent); font-weight:600; font-size:12.5px; padding:8px 0 4px; cursor:pointer;}
+.insight-total b{color:var(--text);}
 .insight-bar-top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:6px;}
 .insight-bar-label{font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0;}
 .insight-bar-count{font-size:12.5px; font-weight:700; color:var(--text-dim); flex:0 0 auto;}
