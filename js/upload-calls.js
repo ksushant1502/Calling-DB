@@ -9,7 +9,7 @@ function openUploadModal(){
     <h3>Upload Calling CSV</h3>
     <div class="field"><label>Which report is this?</label>
       <select id="uploadSource">${Object.entries(SOURCES).map(([k,v])=>`<option value="${k}" ${uploadSource===k?'selected':''}>${v.label}</option>`).join('')}</select>
-      <div class="hint" style="margin-top:6px;">Campaign report = Enterprise, Survey, City calling. Queue report = Retention calling (has a Queue_Name column).</div></div>
+      <div class="hint" style="margin-top:6px;"><b>Campaign report</b>: one file with Enterprise, Survey and Incoming calls — the dashboard splits it into those sections by itself. <b>Retention report</b>: the separate file with the Queue_Name column.</div></div>
     <div class="hint">Choose the first and last date this file covers. Leave both blank to take every date found in the file. Pick the same date in both to save the whole file as one day.</div>
     <div class="field-row">
       <div class="field"><label>From date</label><input type="date" id="uploadFrom"></div>
@@ -121,6 +121,7 @@ function parseDateToYMD(v){
 // flag counts) over one array of raw CSV rows — used once per day when a file is split across
 // multiple dates, or once for the whole file when it isn't.
 const unmappedCampaigns = new Set();
+let skippedRetention=0;
 function processRows(rows, map, defaultLob, defaultCity, source){
   const campaigns={}, agents={};
   const callIdSets={};
@@ -153,6 +154,7 @@ function processRows(rows, map, defaultLob, defaultCity, source){
     const fh = String(row['Form_Header']||'').trim(), fd = String(row['Form_Data']||'').trim();
     if(fh && fd){ const hs=fh.split(',').map(s=>s.trim()), ds=fd.split(',').map(s=>s.trim()); for(let i=0;i<Math.min(hs.length,ds.length);i++) if(ds[i]!=='') form[hs[i]]=ds[i]; }
     map.formcols.forEach(fc=>{ const v=row[fc]; if(v!==undefined && v!==null && String(v).trim()!=='') form[fc]=String(v).trim(); });
+    if(source==='calls' && lob==='Retention'){ skippedRetention++; return; }   // Retention comes only from the separate Retention report
     const connected = isConnect(disp);
 
     totalDials++; if(connected) totalConnects++;
@@ -232,7 +234,7 @@ function confirmMapping(){
   if(dates.length===0){ toast('No rows with a parseable date were found — check the Date column mapping.'); return; }
   if(unparsed) toast(`${unparsed.toLocaleString()} row(s) had an unreadable date and were skipped`);
 
-  unmappedCampaigns.clear();
+  unmappedCampaigns.clear(); skippedRetention=0;
   const daySummaries = dates.map(date=>{
     const rows = groups[date];
     const agg = processRows(rows, map, defaultLob, defaultCity, uploadSource);
@@ -245,7 +247,7 @@ function confirmMapping(){
 
   if(daySummaries.every(d=>d.totalDials===0)){
     toast(uploadSource==='calls'
-      ? 'Every row was skipped. If this is the Retention queue file, go back and choose "Queue report".'
+      ? 'Every row was skipped. If this is the Retention queue file, go back and choose "Retention report".'
       : 'Every row was skipped — check the Queue / Agent column mapping.');
     return;
   }
@@ -269,6 +271,15 @@ function showPreview(daySummaries){
       <td class="overwriteCell" id="overwriteCell_${idx}" style="color:var(--text-dim);font-size:12px;">checking…</td>
     </tr>`;
   }).join('');
+
+  const byTypeAgg = {};
+  daySummaries.forEach(d=>Object.values(d.campaigns).forEach(v=>{
+    const t=campaignTypeOf(v.lob); const x=byTypeAgg[t.id]=byTypeAgg[t.id]||{label:t.label,dials:0,connects:0,n:0};
+    x.dials+=v.dials; x.connects+=v.connects; x.n++;
+  }));
+  const typeBlock = `<div class="hint">What is in this file (by section):</div>
+    <table style="margin-bottom:10px;"><thead><tr><th>Section</th><th>Dials</th><th>Connects</th></tr></thead><tbody>${Object.values(byTypeAgg).sort((a,b)=>b.dials-a.dials).map(x=>`<tr><td>${escapeHtml(x.label)}</td><td>${x.dials.toLocaleString()}</td><td>${x.connects.toLocaleString()}</td></tr>`).join('')}</tbody></table>
+    ${skippedRetention?`<div class="hint">${skippedRetention.toLocaleString()} Retention row(s) were skipped — Retention is taken only from the separate Retention report.</div>`:''}`;
 
   const summaryBlock = multi
     ? `<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
@@ -294,6 +305,7 @@ function showPreview(daySummaries){
   root.innerHTML = `<div class="overlay" id="ov3"><div class="modal">
     <h3>${multi ? `Confirm Upload — ${daySummaries.length} days detected` : `Confirm Upload — ${daySummaries[0].date}`}</h3>
     ${summaryBlock}
+    ${typeBlock}
     ${multi ? `<div class="hint">Per-day breakdown:</div>
     <table style="margin-bottom:10px;"><thead><tr><th>Date</th><th>Dials</th><th>Connects</th><th>Conn %</th><th>Status</th></tr></thead><tbody>${dayRowsHtml}</tbody></table>` : ''}
     ${unmappedCampaigns.size ? `<div style="font-size:12.5px;margin:10px 0;padding:8px 10px;border-radius:8px;background:#fff6e0;color:#7a5200;"><b>${unmappedCampaigns.size} campaign(s) not in the known list</b> — saved with the default Type/City you picked: ${[...unmappedCampaigns].map(escapeHtml).join(', ')}. Add them to CAMPAIGN_MAP in js/config.js to classify them automatically.</div>` : ''}

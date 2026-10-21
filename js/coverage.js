@@ -3,8 +3,8 @@ async function renderUploadStatus(){
   const app=document.getElementById('app');
   const pull = (table)=> sb.from(table).select('date,file_name,uploaded_at').gte('date',range.start).lte('date',range.end);
   const rowsDef = [
-    {label:'Campaign report', note:'Enterprise, Survey and City calling', table:SOURCES.calls.days},
-    {label:'Queue report',    note:'Retention calling',                    table:SOURCES.queue.days},
+    {label:'Campaign report', note:'Enterprise, Survey and Incoming calls (one file)', table:SOURCES.calls.days},
+    {label:'Retention report', note:'Retention calling (separate file)',                    table:SOURCES.queue.days},
     {label:'Conversion data', note:'Conversion file',                      table:'conversion'},
   ];
   const results = await Promise.all(rowsDef.map(r=>pull(r.table)));

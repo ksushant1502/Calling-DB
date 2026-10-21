@@ -127,8 +127,8 @@ const CITY_CODE = {BLR:'Bangalore',DEL:'NCR',GGN:'NCR',NOI:'NCR',HYD:'Hyderabad'
 // Retention calls are made through QUEUES ("queue"). Each kind is stored in its own tables so a queue
 // upload never overwrites a campaign upload for the same date.
 const SOURCES = {
-  calls:{ days:'days',       rows:'day_rows',       label:'Campaign report' },
-  queue:{ days:'queue_days', rows:'queue_day_rows', label:'Queue report (Retention)' }
+  calls:{ days:'days',       rows:'day_rows',       label:'Campaign report — Enterprise, Survey & Incoming calls' },
+  queue:{ days:'queue_days', rows:'queue_day_rows', label:'Retention report — separate file (Queue_Name)' }
 };
 // Retention queues (names as they appear in the Queue_Name column)
 const QUEUE_NAMES = new Set(['Retention calling V1 Q July','Soft Churn Pan India V1','OYC Pan India Q1','D2 Extension V1','Payment failure Pan India 1']);
