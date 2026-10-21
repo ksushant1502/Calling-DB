@@ -8,7 +8,7 @@ function renderCampaigns(){
   const convByCamp = conversionsByCampaign();
   const q = campaignSearch.toLowerCase();
 
-  let html = `<div class="filter-bar"><input type="text" id="campSearch" placeholder="Search campaigns…" value="${escapeHtml(campaignSearch)}" style="min-width:240px;"></div>`;
+  let html = dedupeHint() + `<div class="filter-bar"><input type="text" id="campSearch" placeholder="Search campaigns…" value="${escapeHtml(campaignSearch)}" style="min-width:240px;"></div>`;
   let shown = 0;
 
   CAMPAIGN_TYPES.forEach(t=>{

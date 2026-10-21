@@ -9,12 +9,13 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===================== CONSTANTS =====================
 const NON_CONNECT = ['call not connected','not applicable','call drop','answering machine','agent-nc','customer-nc','dnd-failure','no-disp','agent-cancelled','switched off','invalid number','wrong number','test call','telephony-failure','missed'];
-const LOBS = ['Enterprise','Retention','Instamart','YBP','Experience','CityOps','Incoming','Other'];
+const LOBS = ['Enterprise','Retention','Instamart','YBP','Experience','NCR Churn Survey','CityOps','Incoming','Other'];
 // The campaign types shown across the dashboard (in this order). Each LOB belongs to exactly one type.
 const CAMPAIGN_TYPES = [
   {id:'acquisition', label:'New User Acquisition', lobs:['Enterprise','Instamart'], color:'#3b5bfd'},
   {id:'retention',   label:'Retention',            lobs:['Retention','YBP'],        color:'#0f9a94'},
   {id:'survey',      label:'Survey Calling',       lobs:['Experience'],             color:'#c23b78'},
+  {id:'ncrchurn',    label:'NCR Festival Churn Survey', lobs:['NCR Churn Survey'], color:'#8a4fd8'},
   {id:'city',        label:'City Calling',         lobs:['CityOps'],                color:'#d98a0b'},
   {id:'incoming',    label:'Incoming Customer Calls', lobs:['Incoming'],        color:'#5a6bd8'},
   {id:'other',       label:'Other',                lobs:['Other'],                  color:'#7a8499'},
@@ -23,7 +24,7 @@ function campaignTypeOf(lob){ return (CAMPAIGN_TYPES.find(t=>t.lobs.includes(lob
 // The 24 core callers (new user acquisition + survey + retention). Paste their display names here, e.g. ['Anjali Maury','Divya Mishra', ...].
 // While this list is empty, every agent is shown.
 const CORE_CALLERS = [];
-const LOB_CLASS = {Incoming:'type-other',Enterprise:'type-ent',Retention:'type-ret',Instamart:'type-im',YBP:'type-ybp',Experience:'type-exp',CityOps:'type-other',Other:'type-other'};
+const LOB_CLASS = {Incoming:'type-other',Enterprise:'type-ent',Retention:'type-ret',Instamart:'type-im',YBP:'type-ybp',Experience:'type-exp','NCR Churn Survey':'type-exp',CityOps:'type-other',Other:'type-other'};
 const CITIES = ['Bangalore','Mumbai','NCR'];
 const MISCONDUCT_KEYWORDS = ['abuse','abusive','threat','rude','misbehav','swear','harass','shout','argu'];
 const CALLBACK_KEYWORDS = ['callback','call back','follow up','followup'];
@@ -93,14 +94,14 @@ const CAMPAIGN_MAP = {
   "Post Purchase Instamart Calling Leads Updated": ["Instamart",""],
   "Cancelled Bike Swap Tokenunfulfilled automated": ["CityOps",""],
   "Central Team customer feedback Rating Leads automated": ["Experience",""],
-  "NCR festival Churn calling": ["Retention","NCR"],
-  "NCR festival Churn calling RS": ["Retention","NCR"],
-  "NCR festival Churn calling RS Updated": ["Retention",null],
-  "NCR Festive churn Second Time 29 Sep": ["Retention",null],
-  "NCR Festive churn Third time V3 07 Oct": ["Retention",null],
-  "NCR Festive churn Fourth time V4 13 Oct": ["Retention",null],
-  "NCR Festive churn Fifth time V5 16 Oct": ["Retention",null],
-  "NCR Festive churn Fifth time V5 16 Oct Updated": ["Retention",null],
+  "NCR festival Churn calling": ["NCR Churn Survey","NCR"],
+  "NCR festival Churn calling RS": ["NCR Churn Survey","NCR"],
+  "NCR festival Churn calling RS Updated": ["NCR Churn Survey",null],
+  "NCR Festive churn Second Time 29 Sep": ["NCR Churn Survey",null],
+  "NCR Festive churn Third time V3 07 Oct": ["NCR Churn Survey",null],
+  "NCR Festive churn Fourth time V4 13 Oct": ["NCR Churn Survey",null],
+  "NCR Festive churn Fifth time V5 16 Oct": ["NCR Churn Survey",null],
+  "NCR Festive churn Fifth time V5 16 Oct Updated": ["NCR Churn Survey",null],
   "Zomato Leads Oct 2026": ["Enterprise",""],
   "Blinkit Leads Oct 2026": ["Enterprise",""],
   "Unit pricing Survey  BLR": ["Experience",""],
@@ -131,8 +132,38 @@ const SOURCES = {
 };
 // Retention queues (names as they appear in the Queue_Name column)
 const QUEUE_NAMES = new Set(['Retention calling V1 Q July','Soft Churn Pan India V1','OYC Pan India Q1','D2 Extension V1','Payment failure Pan India 1']);
+// Campaigns that are re-launched every month are shown as ONE campaign. Add a line here to merge more.
+// The raw name stays in the database; the merge happens when the dashboard shows the data (so old and new uploads match).
+const CAMPAIGN_MERGE = [
+  { match:/^\s*blinkit\s+leads\b/i, name:'Blinkit Leads', lob:'Enterprise' },
+  { match:/^\s*zomato\s+leads\b/i,  name:'Zomato Leads',  lob:'Enterprise' },
+];
+// Campaigns that stay separate but belong to their own section ("NCR Festival Churn Survey"), whatever type they were uploaded with.
+const LOB_RULES = [
+  { match:/^\s*ncr\s+festi(val|ve)\s+churn/i, lob:'NCR Churn Survey', city:'NCR' },
+];
+// In these sections the same customer is called many times. The dashboard counts ONE row per phone number:
+// connected beats not connected (then longest talk time, then latest call). Only for these sections a scrambled
+// (hashed) phone key is stored, never the number itself.
+const DEDUPE_LOBS = ['NCR Churn Survey'];
+const PHONE_KEY_SALT = 'yulu-telecalling-2026';
+function isDedupeCampaign(name){ return DEDUPE_LOBS.includes(canonLob(name, null)); }
+function canonLob(name, lob){
+  const r = LOB_RULES.find(x=>x.match.test(String(name||'')));
+  if(r) return r.lob;
+  const m = CAMPAIGN_MERGE.find(x=>x.match.test(String(name||'')));
+  return m && m.lob ? m.lob : lob;
+}
+function canonCampaign(name){
+  const n = String(name||'');
+  const m = CAMPAIGN_MERGE.find(x=>x.match.test(n));
+  return m ? m.name : name;
+}
 function lookupLobCity(campaign, customField1){
-  const e = CAMPAIGN_MAP[campaign]; if(!e) return null;
+  let e = CAMPAIGN_MAP[campaign];
+  if(!e){ const m = CAMPAIGN_MERGE.find(x=>x.match.test(String(campaign||''))); if(m) e = [m.lob, m.city||'']; }   // new months of a merged campaign need no config change
+  if(!e){ const r = LOB_RULES.find(x=>x.match.test(String(campaign||''))); if(r) e = [r.lob, r.city||'']; }
+  if(!e) return null;
   let [lob, city] = e;
   if(city===null) city = CITY_CODE[String(customField1||'').trim()] || '';
   else if(city==='RAW') city = String(customField1||'').trim();

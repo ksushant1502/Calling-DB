@@ -12,10 +12,19 @@ async function fetchAllRows(table, date){
   return all;
 }
 
+function mergeCampaignKeys(obj){
+  const out={};
+  Object.entries(obj||{}).forEach(([k,v])=>{
+    const key=canonCampaign(k);
+    if(v && typeof v==='object'){ out[key]=out[key]||{}; addCounts(out[key], v); if(v.lob) out[key].lob=canonLob(k, v.lob); }
+    else out[key]=(out[key]||0)+(typeof v==='number'?v:0);
+  });
+  return out;
+}
 function mapDayDoc(r, source){
   return { date:r.date, fileName:r.file_name, totalRows:r.total_rows||0, excludedRows:r.excluded_rows||0,
     totalDials:r.total_dials||0, totalConnects:r.total_connects||0,
-    campaigns:r.campaigns||{}, agents:r.agents||{}, flagsCount:r.flags_count||{}, sources:[source] };
+    campaigns:mergeCampaignKeys(r.campaigns), agents:r.agents||{}, flagsCount:r.flags_count||{}, sources:[source] };
 }
 function addCounts(into, from){   // sums {dials,connects,...} style objects, including nested byLob / byCity
   Object.entries(from||{}).forEach(([k,v])=>{
@@ -50,7 +59,7 @@ async function loadConversionSummaries(){
   if(error){ console.error(error); return []; }
   return (data||[]).map(r=>({
     date:r.date, fileName:r.file_name, totalConversions:r.total_conversions,
-    byAgent:r.by_agent||{}, byCampaign:r.by_campaign||{}, byCity:r.by_city||{}, byType:r.by_type||{}
+    byAgent:r.by_agent||{}, byCampaign:mergeCampaignKeys(r.by_campaign), byCity:r.by_city||{}, byType:r.by_type||{}
   }));
 }
 async function loadRowsForDate(date){
@@ -59,23 +68,76 @@ async function loadRowsForDate(date){
   // phone + notes live in a separate table that only editors can read; merge them in by source + row number
   const contacts = (REQUIRE_LOGIN && canWrite) ? await fetchAllRows('call_contacts', date) : [];
   const byKey = {}; contacts.forEach(c=>{ byKey[(c.source||'calls')+':'+c.n]=c; });
-  const conv = (r, src)=>{ const k=byKey[src+':'+r.n]||{}; return {phone:k.phone||'', notes:k.notes||'', source:src, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}; };
+  const conv = (r, src)=>{ const k=byKey[src+':'+r.n]||{}; return {date, pkey:r.pkey||'', phone:k.phone||'', notes:k.notes||'', source:src, agent:r.agent, campaign:canonCampaign(r.campaign), lob:canonLob(r.campaign, r.lob), city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}; };
   const rows = rawC.map(r=>conv(r,'calls')).concat(rawQ.map(r=>conv(r,'queue')));
   rowsCache[date]=rows; return rows;
 }
+// One row per phone number for dedupe campaigns: connected first, then longest talk time, then latest date.
+function pickBestPerNumber(rows){
+  const best = {}, kept = [];
+  let noKey = 0;
+  rows.forEach(r=>{
+    if(!r.pkey){ noKey++; kept.push(r); return; }
+    const b = best[r.pkey];
+    if(!b){ best[r.pkey]=r; return; }
+    const rc=isConnect(r.disposition), bc=isConnect(b.disposition);
+    let better;
+    if(rc!==bc) better = rc;
+    else if(rc && (r.talkSec||0)!==(b.talkSec||0)) better = (r.talkSec||0)>(b.talkSec||0);
+    else better = String(r.date)>=String(b.date);
+    if(better) best[r.pkey]=r;
+  });
+  return {kept: kept.concat(Object.values(best)), noKey};
+}
+let dedupeNote = {};   // section lob -> {raw, unique, noKey}  (shown on the Campaigns page)
 async function loadRowsForRange(){
   const dates = dayDocs.map(d=>d.date);
-  const all = await Promise.all(dates.map(loadRowsForDate));
-  return all.flat();
+  return (await Promise.all(dates.map(loadRowsForDate))).flat();   // Insights etc. show every row, campaign by campaign
+}
+// For dedupe sections (NCR Festival Churn Survey): each phone number is counted once, in the campaign and day of its best call.
+// The campaigns stay separate, and their numbers add up to the unique total.
+async function applyUniqueOverrides(){
+  dedupeNote = {};
+  const hasSection = d=>Object.values(d.campaigns||{}).some(v=>DEDUPE_LOBS.includes(v.lob));
+  const dates = dayDocs.filter(hasSection).map(d=>d.date);
+  if(!dates.length) return;
+  const all = (await Promise.all(dates.map(loadRowsForDate))).flat();
+  DEDUPE_LOBS.forEach(lobName=>{
+    const mine = all.filter(r=>r.lob===lobName);
+    if(!mine.length) return;
+    const {kept, noKey} = pickBestPerNumber(mine);
+    dedupeNote[lobName] = {raw:mine.length, unique:kept.length, noKey};
+    const per = {};
+    kept.forEach(r=>{
+      const key = r.date+'|||'+r.campaign;
+      const d = per[key] = per[key] || {dials:0,connects:0,uniqueCallIds:0,lob:r.lob,city:r.city,byCity:{}};
+      const con = isConnect(r.disposition);
+      d.dials++; d.uniqueCallIds++; if(con) d.connects++;
+      if(r.city){ const bc=d.byCity[r.city]=d.byCity[r.city]||{dials:0,connects:0}; bc.dials++; if(con) bc.connects++; }
+    });
+    dayDocs.forEach(day=>{
+      Object.entries(day.campaigns||{}).forEach(([name,old])=>{
+        if(old.lob!==lobName) return;
+        const nu = per[day.date+'|||'+name];
+        day.totalDials = day.totalDials - (old.dials||0) + (nu?nu.dials:0);
+        day.totalConnects = day.totalConnects - (old.connects||0) + (nu?nu.connects:0);
+        if(nu) day.campaigns[name] = nu; else delete day.campaigns[name];
+      });
+    });
+  });
 }
 async function loadConvRowsForDate(date){
   if(convRowsCache[date]) return convRowsCache[date];
   const raw = await fetchAllRows('conversion_rows', date);
-  const rows = raw.map(r=>({date:r.date, agent:r.agent, campaign:r.campaign, city:r.city, type:r.type}));
+  const rows = raw.map(r=>({date:r.date, agent:r.agent, campaign:canonCampaign(r.campaign), city:r.city, type:r.type}));
   convRowsCache[date]=rows; return rows;
 }
 async function loadConvRowsForRange(){
   const dates = conversionDocs.map(d=>d.date);
   const all = await Promise.all(dates.map(loadConvRowsForDate));
   return all.flat();
+}
+function dedupeHint(){
+  const parts = Object.entries(dedupeNote||{}).map(([lobName,v])=>`<b>${escapeHtml(campaignTypeOf(lobName).label)}</b>: ${v.unique.toLocaleString()} unique numbers from ${v.raw.toLocaleString()} call rows. Each number is counted once, in the campaign where its best call happened (connected first, then not connected), so the campaigns add up to the unique total.${v.noKey?` <span style="color:var(--red,#c23b3b)">${v.noKey.toLocaleString()} rows have no phone key — re-upload those days so they can be matched.</span>`:''}`);
+  return parts.length ? `<div class="admin-only-note">${parts.join('<br>')}</div>` : '';
 }

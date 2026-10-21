@@ -181,7 +181,8 @@ function processRows(rows, map, defaultLob, defaultCity, source){
     if(connected && Object.keys(form).length===0){ flagCounts.form_not_filled++; reasons.push('form_not_filled'); }
     if(keywordHit([notesLower,dispLower], HOT_KEYWORDS)){ flagCounts.hot_convert++; reasons.push('hot_convert'); }
 
-    compactRows.push({n:compactRows.length,agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form,phone,notes});
+    const pkey = isDedupeCampaign(campaign) ? phoneKey(phone) : '';
+    compactRows.push({n:compactRows.length,agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form,phone,notes,pkey});
   });
   Object.keys(campaigns).forEach(c=>{ campaigns[c].uniqueCallIds = callIdSets[c]?callIdSets[c].size:0; });
   Object.keys(agents).forEach(agent=>{
@@ -338,7 +339,7 @@ function showPreview(daySummaries){
         if(upErr) throw upErr;
         await replaceRows(SOURCES[uploadSource].rows, summary.date, summary.compactRows.map(r=>({
           date: summary.date, n:r.n, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city||null,
-          call_id:r.callId||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, flags:r.flags||null, form:r.form||{}
+          call_id:r.callId||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, flags:r.flags||null, form:r.form||{}, ...(r.pkey?{pkey:r.pkey}:{})
         })));
         // phone + notes: separate table, readable by editors only
         if(REQUIRE_LOGIN) await replaceRows('call_contacts', summary.date, summary.compactRows.filter(r=>r.phone||r.notes).map(r=>({date:summary.date, source:uploadSource, n:r.n, phone:r.phone||null, notes:r.notes||null})), {source:uploadSource});

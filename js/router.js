@@ -8,6 +8,7 @@ async function refreshTab(){
   }
   if(activeTab!=='conversion'){
     dayDocs = await loadDaySummaries();
+    await applyUniqueOverrides();
   }
   if(['overview','campaigns','agents','conversion'].includes(activeTab)){
     conversionDocs = await loadConversionSummaries();
