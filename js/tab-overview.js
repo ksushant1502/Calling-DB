@@ -14,7 +14,19 @@ function renderOverview(){
   const convByCamp = conversionsByCampaign();
   const byType = {};
   CAMPAIGN_TYPES.forEach(t=>byType[t.id]={...t,campaigns:0,dials:0,connects:0,conversions:0});
-  campArr.forEach(c=>{ const t=byType[campaignTypeOf(c.lob).id]; t.campaigns++; t.dials+=c.dials; t.connects+=c.connects; t.conversions+=(convByCamp[c.name]||0); });
+  campArr.forEach(c=>{ const t=byType[campaignTypeOf(c.lob).id]; t.campaigns++; t.dials+=c.dials; t.connects+=c.connects; });
+  // conversions are attached to a type by the conversion's own campaign / queue name (so none are lost when the name has no call data)
+  Object.entries(convByCamp).forEach(([n,cnt])=>{ byType[campaignTypeOf(convLobOf(n)).id].conversions += cnt; });
+  // conversions by group (Enterprise / Retention / Other), per day, plus New vs Renewal
+  const cg = {enterprise:0, retention:0, other:0}, cgDay = {enterprise:[], retention:[]};
+  let cvNew=0, cvRenew=0;
+  conversionDocs.forEach(day=>{
+    const d={enterprise:0, retention:0, other:0};
+    Object.entries(day.byCampaign||{}).forEach(([n,v])=>{ d[convGroupOf(n)] += (v.count||0); });
+    Object.keys(d).forEach(k=>{ cg[k]+=d[k]; });
+    cgDay.enterprise.push(d.enterprise); cgDay.retention.push(d.retention);
+    cvNew += (day.byType||{}).new||0; cvRenew += (day.byType||{}).renewal||0;
+  });
 
   let html = `<div class="kpi-grid">
     <div class="kpi" style="--kpi-color:#3b5bfd"><div class="kpi-label">Total Dials</div><div class="kpi-value">${agg.totalDials.toLocaleString()}</div></div>
@@ -29,7 +41,7 @@ function renderOverview(){
 
   html += `<h2 style="font-size:15.5px;margin:4px 0 12px;">By campaign type <span style="font-weight:500;color:var(--text-dim);font-size:12.5px;">— click a card to see its campaigns</span></h2><div class="type-grid">`;
   CAMPAIGN_TYPES.forEach(t=>{
-    const x=byType[t.id]; if(!x.campaigns) return;
+    const x=byType[t.id]; if(!x.campaigns && !x.conversions) return;
     const p = x.dials? x.connects/x.dials*100:0;
     html += `<div class="type-card" data-goto="campaigns" style="--tc:${t.color}">
       <div class="tc-name">${t.label}</div>
@@ -41,6 +53,17 @@ function renderOverview(){
   });
   html += `</div>`;
 
+  html += `<div class="section"><h2>Conversions <span style="font-weight:500;color:var(--text-dim);font-size:12.5px;">— <a href="#" id="ovConvLink">open full conversion details</a></span></h2>
+    ${totalConversions? `<div class="kpi-grid" style="margin-bottom:14px;">
+      <div class="kpi" style="--kpi-color:#3b5bfd"><div class="kpi-label">Enterprise</div><div class="kpi-value">${cg.enterprise.toLocaleString()}</div><div class="kpi-sub">${totalConversions?(cg.enterprise/totalConversions*100).toFixed(0):0}% of conversions</div></div>
+      <div class="kpi" style="--kpi-color:#0f9a94"><div class="kpi-label">Retention</div><div class="kpi-value">${cg.retention.toLocaleString()}</div><div class="kpi-sub">${totalConversions?(cg.retention/totalConversions*100).toFixed(0):0}% of conversions</div></div>
+      <div class="kpi" style="--kpi-color:#7a8499"><div class="kpi-label">Other</div><div class="kpi-value">${cg.other.toLocaleString()}</div><div class="kpi-sub">survey / city / others</div></div>
+      <div class="kpi" style="--kpi-color:#12a066"><div class="kpi-label">New vs Renewal</div><div class="kpi-value" style="font-size:22px;">${cvNew.toLocaleString()} <span style="font-size:13px;color:var(--text-dim);font-weight:600;">new</span> · ${cvRenew.toLocaleString()} <span style="font-size:13px;color:var(--text-dim);font-weight:600;">renewal</span></div></div>
+    </div>
+    <div class="chart-wrap"><canvas id="ovConvCanvas"></canvas></div>`
+    : `<div class="empty-state" style="padding:18px;">No conversion data uploaded for this range. Upload the conversion file from the Upload Status page's "Conversion data" row, or the left menu.</div>`}
+  </div>`;
+
   html += `<div class="two-col">
     <div class="section"><h2>Top campaigns</h2><table><thead><tr><th>Campaign</th><th class="num">Dials</th><th class="num">Conn %</th></tr></thead><tbody>
       ${campArr.slice(0,8).map(c=>`<tr><td>${escapeHtml(c.name)}</td><td class="num">${c.dials.toLocaleString()}</td><td class="num ${pctClass(c.pct)}">${fmtPct(c.pct)}</td></tr>`).join('')}
@@ -51,6 +74,8 @@ function renderOverview(){
   </div>`;
   app.innerHTML = html;
   app.querySelectorAll('[data-goto]').forEach(el=>el.onclick=()=>{ activeTab='campaigns'; renderTabNav(); renderFilterControls(); refreshTab(); });
+  const cl=document.getElementById('ovConvLink'); if(cl) cl.onclick=(e)=>{ e.preventDefault(); activeTab='conversion'; renderTabNav(); renderFilterControls(); refreshTab(); };
+  if(totalConversions) drawConvTrend('ovConvCanvas', conversionDocs.map(d=>d.date), [{label:'Enterprise',data:cgDay.enterprise,color:'#3b5bfd'},{label:'Retention',data:cgDay.retention,color:'#0f9a94'}]);
   drawTrend('trendCanvas', dayDocs.map(d=>d.date), dayDocs.map(d=>d.totalDials||0), dayDocs.map(d=>d.totalConnects||0));
 }
 
