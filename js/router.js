@@ -6,10 +6,8 @@ async function refreshTab(){
     await renderUploadStatus();
     return;
   }
-  if(activeTab!=='conversion'){
-    dayDocs = await loadDaySummaries();
-    await applyUniqueOverrides();
-  }
+  dayDocs = await loadDaySummaries();   // the Conversions page needs the calls too (conversions out of how many connects)
+  await applyUniqueOverrides();
   if(['overview','campaigns','agents','conversion'].includes(activeTab)){
     conversionDocs = await loadConversionSummaries();
   }

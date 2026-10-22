@@ -1,5 +1,5 @@
 // ===== PAGE 1: Overview =====
-function renderOverview(){
+async function renderOverview(){
   const app=document.getElementById('app');
   if(dayDocs.length===0){ app.innerHTML=`<div class="empty-state">No data for this range.${canWrite?' Use "Upload Calling CSV" in the left menu to get started.':''}</div>`; return; }
   const agg = aggregateOverview(null,'all');
@@ -27,6 +27,10 @@ function renderOverview(){
     cgDay.enterprise.push(d.enterprise); cgDay.retention.push(d.retention);
     cvNew += (day.byType||{}).new||0; cvRenew += (day.byType||{}).renewal||0;
   });
+  if(conversionDocs.some(d=>d.hadExcluded)){   // days uploaded before the survey-only rule: recount New / Renewal from the rows
+    const crow = await loadConvRowsForRange();
+    cvNew = crow.filter(r=>r.type==='new').length; cvRenew = crow.filter(r=>r.type==='renewal').length;
+  }
 
   let html = `<div class="kpi-grid">
     <div class="kpi" style="--kpi-color:#3b5bfd"><div class="kpi-label">Total Dials</div><div class="kpi-value">${agg.totalDials.toLocaleString()}</div></div>
@@ -57,7 +61,7 @@ function renderOverview(){
     ${totalConversions? `<div class="kpi-grid" style="margin-bottom:14px;">
       <div class="kpi" style="--kpi-color:#3b5bfd"><div class="kpi-label">Enterprise</div><div class="kpi-value">${cg.enterprise.toLocaleString()}</div><div class="kpi-sub">${totalConversions?(cg.enterprise/totalConversions*100).toFixed(0):0}% of conversions</div></div>
       <div class="kpi" style="--kpi-color:#0f9a94"><div class="kpi-label">Retention</div><div class="kpi-value">${cg.retention.toLocaleString()}</div><div class="kpi-sub">${totalConversions?(cg.retention/totalConversions*100).toFixed(0):0}% of conversions</div></div>
-      <div class="kpi" style="--kpi-color:#7a8499"><div class="kpi-label">Other</div><div class="kpi-value">${cg.other.toLocaleString()}</div><div class="kpi-sub">survey / city / others</div></div>
+      ${cg.other?`<div class="kpi" style="--kpi-color:#7a8499"><div class="kpi-label">Other</div><div class="kpi-value">${cg.other.toLocaleString()}</div><div class="kpi-sub">city / others</div></div>`:''}
       <div class="kpi" style="--kpi-color:#12a066"><div class="kpi-label">New vs Renewal</div><div class="kpi-value" style="font-size:22px;">${cvNew.toLocaleString()} <span style="font-size:13px;color:var(--text-dim);font-weight:600;">new</span> · ${cvRenew.toLocaleString()} <span style="font-size:13px;color:var(--text-dim);font-weight:600;">renewal</span></div></div>
     </div>
     <div class="chart-wrap"><canvas id="ovConvCanvas"></canvas></div>`

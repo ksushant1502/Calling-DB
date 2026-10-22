@@ -57,10 +57,14 @@ async function loadDaySummaries(){
 async function loadConversionSummaries(){
   const { data, error } = await sb.from('conversion').select('*').gte('date',range.start).lte('date',range.end).order('date',{ascending:true});
   if(error){ console.error(error); return []; }
-  return (data||[]).map(r=>({
-    date:r.date, fileName:r.file_name, totalConversions:r.total_conversions,
-    byAgent:r.by_agent||{}, byCampaign:mergeCampaignKeys(r.by_campaign), byCity:r.by_city||{}, byType:r.by_type||{}
-  }));
+  return (data||[]).map(r=>{
+    // survey-only campaigns are never conversions, even in days uploaded before this rule existed
+    const byCampaign = mergeCampaignKeys(r.by_campaign);
+    let removed=0; Object.keys(byCampaign).forEach(k=>{ if(isConvExcluded(k)){ removed+=(byCampaign[k].count||0); delete byCampaign[k]; } });
+    return {
+    date:r.date, fileName:r.file_name, totalConversions:(r.total_conversions||0)-removed, hadExcluded:removed>0,
+    byAgent:r.by_agent||{}, byCampaign, byCity:r.by_city||{}, byType:r.by_type||{}
+  };});
 }
 async function loadRowsForDate(date){
   if(rowsCache[date]) return rowsCache[date];
@@ -129,7 +133,7 @@ async function applyUniqueOverrides(){
 async function loadConvRowsForDate(date){
   if(convRowsCache[date]) return convRowsCache[date];
   const raw = await fetchAllRows('conversion_rows', date);
-  const rows = raw.map(r=>({date:r.date, agent:r.agent, campaign:canonCampaign(r.campaign), city:r.city, type:r.type}));
+  const rows = raw.filter(r=>!isConvExcluded(r.campaign)).map(r=>({date:r.date, agent:r.agent, campaign:canonCampaign(r.campaign), city:r.city, type:r.type}));
   convRowsCache[date]=rows; return rows;
 }
 async function loadConvRowsForRange(){

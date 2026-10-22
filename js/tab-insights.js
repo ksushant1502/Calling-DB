@@ -1,11 +1,12 @@
 // ===== PAGE 4: Insights & VoC =====
 // ===================== INSIGHTS & VoC =====================
 let insightsCampaignFilter='', insightsSearch='';
-async function renderInsights(){
-  const app=document.getElementById('app');
+async function renderInsights(opts){
+  opts = opts || {};   // opts.container / opts.typeId let other pages (Conversions) embed the insights for one type
+  const app = opts.container || document.getElementById('app');
   if(dayDocs.length===0){ app.innerHTML=`<div class="empty-state">No data for this range.</div>`; return; }
   app.innerHTML = `<div class="empty-state"><span class="spinner"></span>Loading response detail…</div>`;
-  const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob));
+  const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob, opts.typeId));
   const campaigns = [...new Set(rows.map(r=>r.campaign))].sort();
   const filtered = rows.filter(r=> (!insightsCampaignFilter || r.campaign===insightsCampaignFilter) );
 
@@ -129,7 +130,7 @@ async function renderInsights(){
     if(d.open) drawCampCharts(ci);
     d.addEventListener('toggle',()=>{ if(d.open) drawCampCharts(ci); });
   });
-  document.getElementById('insCampaign').onchange = (e)=>{ insightsCampaignFilter=e.target.value; renderInsights(); };
+  document.getElementById('insCampaign').onchange = (e)=>{ insightsCampaignFilter=e.target.value; renderInsights(opts); };
   document.getElementById('insSearch').oninput = (e)=>{ insightsSearch=e.target.value; };
   document.getElementById('insToggleAll').onclick = ()=>{
     const ds=[...app.querySelectorAll('details.camp-ins')]; const anyClosed=ds.some(d=>!d.open); ds.forEach(d=>d.open=anyClosed);

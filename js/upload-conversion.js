@@ -76,7 +76,7 @@ function openConvMappingModal(){
 function processConvRows(rows, map){
   const byAgent={}, byCampaign={}, byCity={}, byType={new:0,renewal:0,other:0};
   const kept=[]; let total=0;
-  const skipped={notConnected:0, noPayment:0};
+  const skipped={notConnected:0, noPayment:0, surveyOnly:0};
   rows.forEach(row=>{
     // Rule 1: conversion flag must be 1
     const flagVal = String(row[map.flag]||'').trim().toLowerCase();
@@ -86,6 +86,7 @@ function processConvRows(rows, map){
     // Rule 3: payment date AND payment time must both be present
     if(!String(row[map.paydate]||'').trim() || !String(row[map.paytime]||'').trim()){ skipped.noPayment++; return; }
     const campaign = (row[map.campaign]||'Unknown').trim();
+    if(isConvExcluded(campaign)){ skipped.surveyOnly++; return; }   // survey-only calling, never a conversion
     if(isExcludedCampaign(campaign,'queue')) return;      // retention queues are real; RSA campaigns are not
     const rawAgent = String(row[map.agent]||'').trim().toLowerCase();
     if(isRsaAgent(rawAgent)) return;
@@ -148,7 +149,7 @@ function showConvPreview(daySummaries){
   const grand = daySummaries.reduce((s,d)=>s+d.totalConversions,0);
   const grandNew = daySummaries.reduce((s,d)=>s+(d.byType.new||0),0);
   const grandRen = daySummaries.reduce((s,d)=>s+(d.byType.renewal||0),0);
-  const skipConn = daySummaries.reduce((a,d)=>a+d.skipped.notConnected,0), skipPay = daySummaries.reduce((a,d)=>a+d.skipped.noPayment,0);
+  const skipSurvey = daySummaries.reduce((a,d)=>a+(d.skipped.surveyOnly||0),0), skipConn = daySummaries.reduce((a,d)=>a+d.skipped.notConnected,0), skipPay = daySummaries.reduce((a,d)=>a+d.skipped.noPayment,0);
   const dayRowsHtml = daySummaries.map((s,idx)=>`<tr><td>${s.date}</td><td>${s.totalConversions.toLocaleString()}</td><td>${(s.byType.new||0).toLocaleString()}</td><td>${(s.byType.renewal||0).toLocaleString()}</td><td id="convStatus_${idx}" style="color:var(--text-dim);font-size:12px;">checking…</td></tr>`).join('');
   root.innerHTML = `<div class="overlay" id="ovc3"><div class="modal">
     <h3>${multi?`Confirm Conversion Upload — ${daySummaries.length} days detected`:`Confirm Conversion Upload — ${daySummaries[0].date}`}</h3>
@@ -157,7 +158,7 @@ function showConvPreview(daySummaries){
       <div class="kpi"><div class="kpi-label">New (activation)</div><div class="kpi-value">${grandNew.toLocaleString()}</div></div>
       <div class="kpi"><div class="kpi-label">Renewal (extension)</div><div class="kpi-value">${grandRen.toLocaleString()}</div></div>
     </div>
-    <div class="hint" style="margin-bottom:10px;">Rules applied: flag = 1 · connected disposition · payment date and time present.${(skipConn||skipPay)?` <b>Not counted:</b> ${skipConn.toLocaleString()} flagged row(s) without a connected disposition, ${skipPay.toLocaleString()} without a payment date/time.`:' Every flagged row passed all three rules.'}</div>
+    <div class="hint" style="margin-bottom:10px;">Rules applied: flag = 1 · connected disposition · payment date and time present.${skipSurvey?` <b>${skipSurvey.toLocaleString()}</b> row(s) from survey-only campaigns (NCR Festive churn, Custom Dials, Unit pricing Survey) are not counted.`:''}${(skipConn||skipPay)?` <b>Not counted:</b> ${skipConn.toLocaleString()} flagged row(s) without a connected disposition, ${skipPay.toLocaleString()} without a payment date/time.`:' Every flagged row passed all three rules.'}</div>
     ${multi?`<div class="hint">Per-day breakdown:</div>
     <div style="max-height:260px;overflow:auto;"><table style="margin-bottom:10px;"><thead><tr><th>Date</th><th>Conversions</th><th>New</th><th>Renewal</th><th>Status</th></tr></thead><tbody>${dayRowsHtml}</tbody></table></div>`:''}
     <div id="convOverwriteWarn" style="display:none;color:var(--red);font-size:12.5px;margin-bottom:10px;font-weight:600;"></div>

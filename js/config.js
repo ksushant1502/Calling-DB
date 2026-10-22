@@ -154,6 +154,9 @@ function canonLob(name, lob){
   const m = CAMPAIGN_MERGE.find(x=>x.match.test(String(name||'')));
   return m && m.lob ? m.lob : lob;
 }
+// Survey-only calling: these campaigns are NOT counted as conversions (they are called only for survey answers).
+const CONVERSION_EXCLUDE = [ /^\s*ncr\s+festi(val|ve)\s+churn/i, /^\s*custom dials\s*$/i, /unit pricing survey/i ];
+function isConvExcluded(name){ const n=String(name||''); return CONVERSION_EXCLUDE.some(x=>x.test(n)); }
 function canonCampaign(name){
   const n = String(name||'');
   const m = CAMPAIGN_MERGE.find(x=>x.match.test(n));

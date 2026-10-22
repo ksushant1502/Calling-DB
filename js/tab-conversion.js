@@ -58,17 +58,27 @@ async function renderConversion(){
   const dates = conversionDocs.map(d=>d.date);
   const perDay = g => dates.map(d=>by[g].filter(r=>r.date===d).length);
 
+  // what the conversions are measured against: the calls of the same type in the same date range
+  const denom = { enterprise: aggregateOverview(null,'acquisition'), retention: aggregateOverview(null,'retention') };
+  const ofText = (g,n)=>{
+    const d = denom[g]; if(!d || !d.totalConnects) return '';
+    return `of <b>${d.totalConnects.toLocaleString()}</b> connects · <b>${(n/d.totalConnects*100).toFixed(1)}%</b><br>of <b>${d.totalDials.toLocaleString()}</b> dials · ${(n/d.totalDials*100).toFixed(1)}%`;
+  };
   const kpi = (label,val,sub,g)=>`<div class="kpi ${g?'kpi-clickable':''} ${g&&convView===g?'active':''}" ${g?`data-view="${g}" title="Click to show only ${label}"`:''}><div class="kpi-label">${label}</div><div class="kpi-value">${val.toLocaleString()}</div>${sub?`<div class="kpi-sub" style="font-size:12px;color:var(--text-dim);margin-top:2px;">${sub}</div>`:''}</div>`;
   const share = n => total? (n/total*100).toFixed(0)+'% of total' : '';
   let html = `<div class="typebar" style="margin:0 0 14px;">${[['all','All'],['enterprise','Enterprise'],['retention','Retention']].map(([v,l])=>`<button class="chip ${convView===v?'active':''}" data-view="${v}">${l}</button>`).join('')}</div>`;
+  // the four top cards only on the 'All' view; Enterprise / Retention show just their own part
+  if(convView==='all'){
   html += `<div class="kpi-grid">
     ${kpi('Total Conversions', total, `${dates.length} day${dates.length===1?'':'s'}`)}
-    ${kpi('Enterprise', by.enterprise.length, share(by.enterprise.length), 'enterprise')}
-    ${kpi('Retention', by.retention.length, share(by.retention.length), 'retention')}
+    ${kpi('Enterprise', by.enterprise.length, ofText('enterprise',by.enterprise.length)||share(by.enterprise.length), 'enterprise')}
+    ${kpi('Retention', by.retention.length, ofText('retention',by.retention.length)||share(by.retention.length), 'retention')}
     ${by.other.length ? kpi('Other', by.other.length, 'survey, city, others') : ''}
   </div>`;
 
-  html += `<div class="section"><h2>Daily conversions</h2><div class="chart-wrap"><canvas id="convTrend"></canvas></div></div>`;
+  }
+
+  html += `<div class="section"><h2>Daily conversions${convView==='all'?'':' — '+CONV_GROUPS[convView].label}</h2><div class="chart-wrap"><canvas id="convTrend"></canvas></div></div>`;
 
   const groupsToShow = convView==='all' ? ['enterprise','retention'] : [convView];
   groupsToShow.forEach(g=>{
@@ -76,8 +86,9 @@ async function renderConversion(){
     const nw = rs.filter(r=>r.type==='new').length, rn = rs.filter(r=>r.type==='renewal').length;
     html += `<div class="section" style="border-top:3px solid ${meta.color};">
       <h2>${meta.long}</h2>
-      <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
-        ${kpi('Conversions', rs.length, share(rs.length))}
+      <div class="kpi-grid" style="margin-bottom:16px;">
+        ${kpi('Conversions', rs.length, ofText(g,rs.length)||share(rs.length))}
+        ${denom[g] && denom[g].totalConnects ? kpi('Connects (calls)', denom[g].totalConnects, `${denom[g].totalDials.toLocaleString()} dials · ${(denom[g].totalConnects/denom[g].totalDials*100).toFixed(1)}% connected`) : ''}
         ${kpi('New (activation)', nw)}
         ${kpi('Renewal (extension)', rn)}
         ${kpi('Campaigns / queues', new Set(rs.map(r=>r.campaign)).size)}
@@ -92,6 +103,9 @@ async function renderConversion(){
   if(convView==='all' && by.other.length){
     html += `<div class="hint">Other conversions (${by.other.length.toLocaleString()}): ${countBy(by.other,'campaign').map(([n,c])=>`${escapeHtml(n)} (${c})`).join(', ')}</div>`;
   }
+  if(convView!=='all'){
+    html += `<div class="section" style="border-top:3px solid ${CONV_GROUPS[convView].color};"><h2>Insights — ${CONV_GROUPS[convView].label}</h2><div id="convInsights"></div></div>`;
+  }
   app.innerHTML = html;
 
   app.querySelectorAll('[data-view]').forEach(b=>{ b.onclick=()=>{ convView = (convView===b.getAttribute('data-view') && b.classList.contains('kpi'))?'all':b.getAttribute('data-view'); renderConversion(); }; });
@@ -99,4 +113,8 @@ async function renderConversion(){
     ? [{label:'Enterprise',color:CONV_GROUPS.enterprise.color,data:perDay('enterprise')},{label:'Retention',color:CONV_GROUPS.retention.color,data:perDay('retention')}]
     : [{label:CONV_GROUPS[convView].label,color:CONV_GROUPS[convView].color,data:perDay(convView)}];
   drawConvTrend('convTrend', dates, ds);
+  if(convView!=='all'){
+    insightsCampaignFilter='';
+    await renderInsights({ container: document.getElementById('convInsights'), typeId: convView==='enterprise' ? 'acquisition' : 'retention' });
+  }
 }
