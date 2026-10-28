@@ -69,3 +69,11 @@ function renderUploadControls(){
   el.querySelector('#uploadConvBtn').onclick = openConversionUploadModal;
   const lo = el.querySelector('#logoutBtn'); if(lo) lo.onclick = logout;
 }
+
+// Clicking the Yulu logo takes you home (Overview)
+(function wireBrandHome(){
+  const b=document.getElementById('brandHome'); if(!b) return;
+  const goHome=()=>{ activeTab='overview'; renderTabNav(); renderFilterControls(); refreshTab(); window.scrollTo(0,0); };
+  b.onclick=goHome;
+  b.onkeydown=(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goHome(); } };
+})();

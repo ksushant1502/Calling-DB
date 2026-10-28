@@ -237,3 +237,6 @@ td.num, th.num{text-align:right;}
 .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-bottom:0}
 .hc{height:250px;position:relative}
 @media (max-width:1150px){.cols{grid-template-columns:minmax(0,1fr);} .funnel-row{grid-template-columns:90px 1fr 120px;}}
+
+.brand{cursor:pointer;}
+.brand:focus-visible{outline:2px solid var(--accent); border-radius:8px;}
