@@ -21,7 +21,7 @@ function renderRoleBadge(){
 
 function renderTabNav(){
   const nav = document.getElementById('tabNav');
-  nav.innerHTML = TABS.map((t,i)=>`<button class="nav-btn ${activeTab===t.id?'active':''}" data-tab="${t.id}">${ICONS[t.id]||''}<span>${t.label}</span><span class="nav-num">${i+1}</span></button>`).join('');
+  nav.innerHTML = TABS.map((t,i)=>`<button class="nav-btn ${activeTab===t.id?'active':''}" data-tab="${t.id}">${ICONS[t.id]||''}<span>${t.label}</span></button>`).join('');
   nav.querySelectorAll('[data-tab]').forEach(btn=>{
     btn.onclick = ()=>{ activeTab = btn.getAttribute('data-tab'); renderTabNav(); renderFilterControls(); refreshTab(); };
   });
