@@ -213,7 +213,7 @@ function processRows(rows, map, defaultLob, defaultCity, source){
     if(keywordHit([notesLower,dispLower], MISCONDUCT_KEYWORDS)){ flagCounts.misconduct++; reasons.push('misconduct'); }
     if(keywordHit([dispLower], CALLBACK_KEYWORDS)){ flagCounts.callback++; reasons.push('callback'); }
     if(connected && Object.keys(form).length===0){ flagCounts.form_not_filled++; reasons.push('form_not_filled'); }
-    if(keywordHit([notesLower,dispLower], HOT_KEYWORDS)){ flagCounts.hot_convert++; reasons.push('hot_convert'); }
+    if(keywordHit([notesLower,dispLower], HOT_KEYWORDS) && !/not\s*[-_ ]?\s*(interested|intrested)/.test(dispLower)){ flagCounts.hot_convert++; reasons.push('hot_convert'); }
 
     const pkey = isDedupeCampaign(campaign) ? phoneKey(phone) : '';
     compactRows.push({n:compactRows.length,agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form,phone,notes,pkey});

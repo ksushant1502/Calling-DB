@@ -8,7 +8,7 @@ async function refreshTab(){
   }
   dayDocs = await loadDaySummaries();   // the Conversions page needs the calls too (conversions out of how many connects)
   await applyUniqueOverrides();
-  if(['overview','campaigns','agents','conversion'].includes(activeTab)){
+  if(['overview','campaigns','agents','conversion','insights'].includes(activeTab)){
     conversionDocs = await loadConversionSummaries();
   }
   const n = (activeTab==='conversion' ? conversionDocs : dayDocs).length;

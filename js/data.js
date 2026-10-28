@@ -54,8 +54,8 @@ async function loadDaySummaries(){
   (qu.data||[]).forEach(r=>{ const d=mapDayDoc(r,'queue'); byDate[r.date] = byDate[r.date] ? mergeDayDocs(byDate[r.date], d) : d; });
   return Object.keys(byDate).sort().map(k=>byDate[k]);
 }
-async function loadConversionSummaries(){
-  const { data, error } = await sb.from('conversion').select('*').gte('date',range.start).lte('date',range.end).order('date',{ascending:true});
+async function loadConversionSummaries(rs, re){
+  const { data, error } = await sb.from('conversion').select('*').gte('date',rs||range.start).lte('date',re||range.end).order('date',{ascending:true});
   if(error){ console.error(error); return []; }
   return (data||[]).map(r=>{
     // survey-only campaigns are never conversions, even in days uploaded before this rule existed
@@ -144,4 +144,23 @@ async function loadConvRowsForRange(){
 function dedupeHint(){
   const parts = Object.entries(dedupeNote||{}).map(([lobName,v])=>`<b>${escapeHtml(campaignTypeOf(lobName).label)}</b>: ${v.unique.toLocaleString()} unique numbers from ${v.raw.toLocaleString()} call rows. Each number is counted once, in the campaign where its best call happened (connected first, then not connected), so the campaigns add up to the unique total.${v.noKey?` <span style="color:var(--red,#c23b3b)">${v.noKey.toLocaleString()} rows have no phone key — re-upload those days so they can be matched.</span>`:''}`);
   return parts.length ? `<div class="admin-only-note">${parts.join('<br>')}</div>` : '';
+}
+
+// ---- previous period of the same length (for "▲ 12% vs previous 7 days" on the Insights cards) ----
+function shiftDate(ymd, days){ const d=new Date(ymd+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
+async function loadPreviousPeriod(){
+  try{
+    const n = Math.round((new Date(range.end+'T00:00:00Z')-new Date(range.start+'T00:00:00Z'))/86400000)+1;
+    const pe = shiftDate(range.start,-1), ps = shiftDate(pe, -(n-1));
+    const q = (t)=> sb.from(t).select('*').gte('date',ps).lte('date',pe);
+    const [c, qu, cv] = await Promise.all([ q(SOURCES.calls.days), q(SOURCES.queue.days), loadConversionSummaries(ps, pe) ]);
+    const camps = {};
+    const add = (rows, src)=>(rows||[]).forEach(r=>{
+      const d = mapDayDoc(r, src);
+      Object.entries(d.campaigns).forEach(([name,v])=>{ const x=camps[name]=camps[name]||{dials:0,connects:0,conv:0}; x.dials+=v.dials||0; x.connects+=v.connects||0; });
+    });
+    add(c.data,'calls'); add(qu.data,'queue');
+    cv.forEach(day=>Object.entries(day.byCampaign||{}).forEach(([name,v])=>{ const x=camps[name]=camps[name]||{dials:0,connects:0,conv:0}; x.conv+=v.count||0; }));
+    return {n, start:ps, end:pe, camps, hasCalls:Object.keys(camps).length>0, hasConv:cv.length>0};
+  }catch(e){ console.error(e); return {n:0,camps:{},hasCalls:false,hasConv:false}; }
 }
