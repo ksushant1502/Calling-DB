@@ -3,9 +3,9 @@ async function renderUploadStatus(){
   const app=document.getElementById('app');
   const pull = (table)=> sb.from(table).select('date,file_name,uploaded_at').gte('date',range.start).lte('date',range.end);
   const rowsDef = [
-    {label:'Campaign report', note:'Enterprise, Survey and Incoming calls (one file)', table:SOURCES.calls.days},
-    {label:'Retention report', note:'Retention calling (separate file)',                    table:SOURCES.queue.days},
-    {label:'Conversion data', note:'Conversion file',                      table:'conversion'},
+    {key:'calls', label:'Campaign report', note:'Enterprise, Survey and Incoming calls (one file)', table:SOURCES.calls.days},
+    {key:'queue', label:'Retention report', note:'Retention calling (separate file)',                    table:SOURCES.queue.days},
+    {key:'conversion', label:'Conversion data', note:'Conversion file',                      table:'conversion'},
   ];
   const results = await Promise.all(rowsDef.map(r=>pull(r.table)));
   if(results[0].error){ app.innerHTML=`<div class="empty-state">Could not load upload status: ${escapeHtml(results[0].error.message)}</div>`; return; }
@@ -20,7 +20,8 @@ async function renderUploadStatus(){
       const r=have[x]; const dt=new Date(x+'T00:00:00Z');
       const lbl=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'});
       const tip = r ? `${def.label} uploaded${r.file_name?': '+r.file_name:''}${r.uploaded_at?' ('+new Date(r.uploaded_at).toLocaleString()+')':''}` : `No ${def.label.toLowerCase()} uploaded for this date`;
-      return `<span class="cv-chip ${r?'ok':'miss'}" title="${escapeHtml(tip)}">${lbl}<small>${r?'✓ uploaded':'missing'}</small></span>`;
+      const click = (!r && canWrite) ? ` data-report="${def.key}" data-date="${x}" style="cursor:pointer;"` : '';
+      return `<span class="cv-chip ${r?'ok':'miss'}" title="${escapeHtml(r||!canWrite?tip:'Click to upload this date')}"${click}>${lbl}<small>${r?'✓ uploaded':(canWrite?'upload':'missing')}</small></span>`;
     }).join('');
     return `<div class="section">
       <h2>${def.label} <span style="font-weight:500;color:var(--text-dim);font-size:13px;">— ${def.note}</span>
@@ -29,5 +30,11 @@ async function renderUploadStatus(){
     </div>`;
   }).join('');
 
-  app.innerHTML = sections + `<div class="hint">Green = data uploaded for that date. Red = nothing uploaded yet. Change the dates at the top right to check a different period. A day with no calls (for example a holiday) also shows as missing. Hover over a green box to see the file name and when it was uploaded.</div>`;
+  app.innerHTML = sections + `<div class="hint">Green = data uploaded for that date. Red = nothing uploaded yet. Change the dates at the top right to check a different period. Click a red date to upload that day (rows from other dates in the file are ignored). A day with no calls (for example a holiday) also shows as missing. Hover over a green box to see the file name and when it was uploaded.</div>`;
+  app.querySelectorAll('.cv-chip.miss[data-report]').forEach(el=>{
+    el.onclick=()=>{
+      const rep=el.getAttribute('data-report'), date=el.getAttribute('data-date');
+      if(rep==='conversion') openConversionUploadModal({date}); else openUploadModal({source:rep, date});
+    };
+  });
 }

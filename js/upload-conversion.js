@@ -3,10 +3,13 @@
 let pendingConvParsed=null;
 let convFrom='', convTo='';
 
-function openConversionUploadModal(){
+let convFilterByDate=false;
+function openConversionUploadModal(preset){
+  convFilterByDate=!!(preset && preset.date);
   const root=document.getElementById('modalRoot');
   root.innerHTML = `<div class="overlay" id="ovc1"><div class="modal">
     <h3>Upload Conversion CSV</h3>
+    ${convFilterByDate?`<div class="admin-only-note" style="margin:8px 0;">Uploading <b>${preset.date}</b> only: rows from other dates in the file are ignored.</div>`:''}
     <div class="hint">Choose the first and last date this file covers. Leave both blank to take every date found in the file (use this for a file that covers many days). Pick the same date in both to save the whole file as one day. Only rows with conversion_flag = 1 are counted.</div>
     <div class="field-row">
       <div class="field"><label>From date</label><input type="date" id="convFrom"></div>
@@ -16,6 +19,7 @@ function openConversionUploadModal(){
     <div id="convFileStatus" style="font-size:12.5px;color:var(--text-dim);"></div>
     <div class="modal-actions"><button id="cancelConvUpload">Cancel</button></div>
   </div></div>`;
+  if(convFilterByDate){ document.getElementById('convFrom').value=preset.date; document.getElementById('convTo').value=preset.date; }
   document.getElementById('convDropZone').onclick=()=>document.getElementById('convFileInput').click();
   document.getElementById('convFileInput').onchange=handleConvFileSelect;
   document.getElementById('cancelConvUpload').onclick=()=>root.innerHTML='';
@@ -121,7 +125,10 @@ function confirmConvMapping(){
   if(!singleDay && !map.datecol){ toast('Pick the Date column so the file can be split by day — or go Back and choose the same From and To date.'); return; }
 
   const groups={}; let unparsed=0, outOfRange=0;
-  if(singleDay){ groups[convFrom]=pendingConvParsed.rows; }
+  if(singleDay && convFilterByDate && map.datecol){
+    groups[convFrom]=pendingConvParsed.rows.filter(row=>{ const d=parseDateToYMD(row[map.datecol]); if(d===convFrom) return true; outOfRange++; return false; });
+    if(!groups[convFrom].length){ toast(`No rows for ${convFrom} were found in this file (column "${map.datecol}").`); return; }
+  } else if(singleDay){ groups[convFrom]=pendingConvParsed.rows; }
   else {
     pendingConvParsed.rows.forEach(row=>{
       const d = parseDateToYMD(row[map.datecol]);

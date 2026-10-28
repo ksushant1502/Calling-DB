@@ -3,13 +3,20 @@
 let pendingParsed=null;
 let uploadSource='calls';   // 'calls' = campaign report, 'queue' = retention queue report
 let uploadFrom='', uploadTo='', uploadDefaultLob='Other', uploadDefaultCity=''; // optional date range chosen on the first screen
-function openUploadModal(){
+let uploadQueue=[];            // more files waiting after the current one (several files dropped together)
+let uploadFilterByDate=false;  // true when opened from a red date on Upload Status: keep only that date's rows
+function setUploadStatus(msg){ const el=document.getElementById('fileStatus'); if(el) el.textContent=msg; }
+function openUploadModal(preset){
+  uploadQueue=[]; uploadFilterByDate=!!(preset && preset.date);
+  if(preset && preset.source) uploadSource=preset.source;
+  else { const sv=safeGet('yulu_upload_source'); if(sv && SOURCES[sv]) uploadSource=sv; }
   const root=document.getElementById('modalRoot');
   root.innerHTML = `<div class="overlay" id="ov1"><div class="modal">
     <h3>Upload Calling CSV</h3>
     <div class="field"><label>Which report is this?</label>
       <select id="uploadSource">${Object.entries(SOURCES).map(([k,v])=>`<option value="${k}" ${uploadSource===k?'selected':''}>${v.label}</option>`).join('')}</select>
       <div class="hint" style="margin-top:6px;"><b>Campaign report</b>: one file with Enterprise, Survey and Incoming calls — the dashboard splits it into those sections by itself. <b>Retention report</b>: the separate file with the Queue_Name column.</div></div>
+    ${uploadFilterByDate?`<div class="admin-only-note" style="margin:8px 0;">Uploading <b>${preset.date}</b> only: rows from other dates in the file are ignored.</div>`:''}
     <div class="hint">Choose the first and last date this file covers. Leave both blank to take every date found in the file. Pick the same date in both to save the whole file as one day.</div>
     <div class="field-row">
       <div class="field"><label>From date</label><input type="date" id="uploadFrom"></div>
@@ -20,27 +27,52 @@ function openUploadModal(){
     </div>
     <div class="field"><label>Default City (optional — leave blank if not a city-ops file)</label>
       <select id="uploadCity"><option value="">— none —</option>${CITIES.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></div>
-    <div class="field"><label>CSV file</label><div class="file-drop" id="dropZone">Click to choose a CSV file</div><input type="file" id="fileInput" accept=".csv" style="display:none;"></div>
+    <div class="field"><label>CSV file</label><div class="file-drop" id="dropZone">Click to choose a CSV file — or select the campaign and Retention files together</div><input type="file" id="fileInput" accept=".csv" multiple style="display:none;"></div>
     <div id="fileStatus" style="font-size:12.5px;color:var(--text-dim);"></div>
     <div class="modal-actions"><button id="cancelUpload">Cancel</button></div>
   </div></div>`;
+  if(uploadFilterByDate){ document.getElementById('uploadFrom').value=preset.date; document.getElementById('uploadTo').value=preset.date; }
+  const dz=document.getElementById('dropZone');
+  dz.ondragover=(e)=>{ e.preventDefault(); dz.style.borderColor='var(--accent)'; };
+  dz.ondragleave=()=>{ dz.style.borderColor=''; };
+  dz.ondrop=(e)=>{ e.preventDefault(); dz.style.borderColor=''; handleFileSelect({target:{files:e.dataTransfer.files}}); };
   document.getElementById('dropZone').onclick=()=>document.getElementById('fileInput').click();
   document.getElementById('fileInput').onchange=handleFileSelect;
   document.getElementById('cancelUpload').onclick=()=>root.innerHTML='';
   document.getElementById('ov1').addEventListener('click',e=>{ if(e.target.id==='ov1') root.innerHTML=''; });
 }
 function handleFileSelect(e){
-  const file=e.target.files[0]; if(!file) return;
+  const files=[...(e.target.files||[])].filter(f=>/\.csv$/i.test(f.name)); if(!files.length) return;
   uploadSource=document.getElementById('uploadSource').value;
   uploadDefaultLob=document.getElementById('uploadLob').value; uploadDefaultCity=document.getElementById('uploadCity').value;
   uploadFrom=document.getElementById('uploadFrom').value; uploadTo=document.getElementById('uploadTo').value;
   if(uploadFrom && uploadTo && uploadFrom>uploadTo){ [uploadFrom,uploadTo]=[uploadTo,uploadFrom]; }
-  document.getElementById('fileStatus').textContent='Parsing…';
+  uploadQueue = files.slice(1);
+  if(files.length>1) toast(`${files.length} files selected — they will be uploaded one after the other`);
+  parseAndOpen(files[0]);
+}
+function parseAndOpen(file){
+  setUploadStatus('Parsing…');
   Papa.parse(file,{header:true, skipEmptyLines:true, complete:(results)=>{
-    pendingParsed={fileName:file.name, headers:results.meta.fields||[], rows:results.data};
-    document.getElementById('fileStatus').textContent=`Parsed ${results.data.length.toLocaleString()} rows, ${pendingParsed.headers.length} columns.`;
+    const headers=results.meta.fields||[];
+    const low=headers.map(h=>h.toLowerCase().trim());
+    if(low.includes('conversion_flag')){ toast(`"${file.name}" looks like a conversion file — upload it with "Upload Conversion CSV" instead. Skipped.`); document.getElementById('modalRoot').innerHTML=''; startNextQueued(); return; }
+    // which report is it? decided by its column names
+    let detected = null;
+    if(low.includes('queue_name') && !low.includes('campaign_name')) detected='queue';
+    else if(low.includes('campaign_name')) detected='calls';
+    if(detected && detected!==uploadSource){ uploadSource=detected; toast(`"${file.name}" detected as: ${SOURCES[detected].label}`); }
+    safeSet('yulu_upload_source', uploadSource);
+    pendingParsed={fileName:file.name, headers, rows:results.data};
+    setUploadStatus(`Parsed ${results.data.length.toLocaleString()} rows, ${headers.length} columns.`);
     openMappingModal();
-  }, error:(err)=>{ document.getElementById('fileStatus').textContent='Failed to parse CSV: '+err.message; }});
+  }, error:(err)=>{ setUploadStatus('Failed to parse CSV: '+err.message); }});
+}
+function startNextQueued(){
+  if(!uploadQueue.length) return;
+  const next=uploadQueue.shift();
+  toast(`Next file: ${next.name}`);
+  parseAndOpen(next);
 }
 function guessColumn(headers,keywords){
   const norm=h=>h.toLowerCase().replace(/\s*\(ist\)\s*$/,'').trim();
@@ -218,7 +250,10 @@ function confirmMapping(){
   const singleDay = uploadFrom && uploadTo && uploadFrom===uploadTo;
   if(!singleDay && !map.datecol){ toast('Pick the Date column (e.g. Call_Assigned_Time) so the file can be split by day — or go Back and choose the same From and To date.'); return; }
   let outOfRange = 0;
-  if(singleDay){
+  if(singleDay && uploadFilterByDate && map.datecol){
+    groups[uploadFrom] = pendingParsed.rows.filter(row=>{ const d=parseDateToYMD(row[map.datecol]); if(d===uploadFrom) return true; outOfRange++; return false; });
+    if(!groups[uploadFrom].length){ toast(`No rows for ${uploadFrom} were found in this file (column "${map.datecol}").`); return; }
+  } else if(singleDay){
     groups[uploadFrom] = pendingParsed.rows;
   } else {
     pendingParsed.rows.forEach(row=>{
@@ -360,6 +395,7 @@ function showPreview(daySummaries){
       toast(daySummaries.length>1 ? `Saved data for ${daySummaries.length} days` : 'Saved data for '+daySummaries[0].date);
       root.innerHTML='';
       await refreshTab();
+      startNextQueued();
     }catch(e){ toast('Save failed: '+(e.message||e.code||e)); btn.disabled=false; btn.textContent='Save to Dashboard'; progress.style.display='none'; }
   };
 }
