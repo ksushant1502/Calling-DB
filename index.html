@@ -1,72 +1,72 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Yulu Telecaller Dashboard</title>
+<title>Yulu Telecalling</title>
 <link rel="icon" type="image/png" href="img/yulu-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<link rel="stylesheet" href="css/styles.css?v=202610280930">
+<link rel="stylesheet" href="css/styles.css?v=202611020650">
+<link rel="stylesheet" href="css/app.css?v=202611020650">
 </head>
 <body>
-<div class="app-shell">
 
-  <!-- ============ LEFT SIDEBAR ============ -->
-  <aside class="sidebar">
-    <div class="brand" id="brandHome" role="button" tabindex="0" title="Go to the home page (Overview)">
-      <img class="brand-mark" src="img/yulu-mark.png" alt="Yulu">
-      <div class="brand-text">
-        <img class="brand-word" src="img/yulu-wordmark.png" alt="yulu">
-        <div class="brand-sub">Telecalling · Live performance</div>
-      </div>
-    </div>
-    <nav class="nav" id="tabNav"></nav>
-    <div class="sidebar-bottom">
-      <div id="roleBadgeWrap"></div>
-      <div class="upload-controls" id="uploadControls"></div>
-    </div>
-  </aside>
+<!-- ============ TOP BAR: logo · menu · upload ============ -->
+<header class="topbar">
+  <div class="brand" id="brandHome" role="button" tabindex="0" title="Go to Home">
+    <img class="brand-mark" src="img/yulu-mark.png" alt="Yulu">
+    <img class="brand-word" src="img/yulu-wordmark.png" alt="yulu">
+    <span class="brand-sub">Telecalling</span>
+  </div>
+  <nav class="nav" id="tabNav"></nav>
+  <div class="topbar-right">
+    <div id="roleBadgeWrap"></div>
+    <div class="upload-controls" id="uploadControls"></div>
+  </div>
+</header>
 
-  <!-- ============ MAIN AREA ============ -->
-  <main class="main">
-    <header class="pagebar">
-      <div class="pagebar-left">
-        <h1 id="pageTitle">Overview</h1>
-        <div class="range-summary" id="rangeSummary"></div>
-      </div>
-      <div class="pagebar-right" id="filterControls"></div>
-    </header>
-    <div id="app"></div>
-    <div class="footer-note">Aggregates are visible to everyone · row-level detail and uploads are for editors only</div>
-  </main>
+<!-- ============ DATE BAR (same dates for every page) ============ -->
+<div class="ctxbar">
+  <div class="ctxbar-inner">
+    <div class="ctx-left" id="rangeSummary"></div>
+    <div class="ctx-right" id="filterControls"></div>
+  </div>
 </div>
+
+<main class="main">
+  <div id="app"></div>
+  <div class="footer-note">Yulu Telecalling · numbers are visible to everyone · uploads are for editors</div>
+</main>
 
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 
 <!-- Core -->
-<script src="js/config.js?v=202610280930"></script>
-<script src="js/utils.js?v=202610280930"></script>
-<script src="js/state.js?v=202610280930"></script>
-<script src="js/auth.js?v=202610280930"></script>
-<script src="js/shell.js?v=202610280930"></script>
-<script src="js/data.js?v=202610280930"></script>
-<script src="js/router.js?v=202610280930"></script>
-<script src="js/coverage.js?v=202610280930"></script>
-<script src="js/aggregation.js?v=202610280930"></script>
-<!-- Pages, in sidebar order -->
-<script src="js/tab-overview.js?v=202610280930"></script>
-<script src="js/tab-campaigns.js?v=202610280930"></script>
-<script src="js/tab-agents.js?v=202610280930"></script>
-<script src="js/tab-insights.js?v=202610280930"></script>
-<script src="js/tab-flags.js?v=202610280930"></script>
-<script src="js/tab-conversion.js?v=202610280930"></script>
+<script src="js/config.js?v=202611020650"></script>
+<script src="js/utils.js?v=202611020650"></script>
+<script src="js/state.js?v=202611020650"></script>
+<script src="js/auth.js?v=202611020650"></script>
+<script src="js/shell.js?v=202611020650"></script>
+<script src="js/data.js?v=202611020650"></script>
+<script src="js/router.js?v=202611020650"></script>
+<script src="js/coverage.js?v=202611020650"></script>
+<script src="js/aggregation.js?v=202611020650"></script>
+<!-- Pages -->
+<script src="js/charts.js?v=202611020650"></script>
+<script src="js/page-home.js?v=202611020650"></script>
+<script src="js/page-section.js?v=202611020650"></script>
+<script src="js/tab-campaigns.js?v=202611020650"></script>
+<script src="js/tab-agents.js?v=202611020650"></script>
+<script src="js/tab-insights.js?v=202611020650"></script>
+<script src="js/tab-flags.js?v=202611020650"></script>
+<script src="js/tab-conversion.js?v=202611020650"></script>
 <!-- Uploads -->
-<script src="js/upload-calls.js?v=202610280930"></script>
-<script src="js/upload-conversion.js?v=202610280930"></script>
-<script src="js/main.js?v=202610280930"></script>
+<script src="js/upload-calls.js?v=202611020650"></script>
+<script src="js/upload-conversion.js?v=202611020650"></script>
+<script src="js/main.js?v=202611020650"></script>
 </body>
 </html>
-<!-- build 202610280930 -->

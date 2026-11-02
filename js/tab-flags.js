@@ -1,10 +1,11 @@
 // ===== PAGE 5: Flags =====
 // ===================== FLAGS =====================
-async function renderFlags(){
-  const app=document.getElementById('app');
-  if(dayDocs.length===0){ app.innerHTML=`<div class="empty-state">No data for this range.</div>`; return; }
+async function renderFlags(opts){
+  opts=opts||{};
+  const app=opts.container||document.getElementById('app');
+  if(dayDocs.length===0){ app.innerHTML=emptyRange(); return; }
   app.innerHTML = `<div class="empty-state"><span class="spinner"></span>Scanning calls for flags…</div>`;
-  const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob));
+  const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob, opts.typeId));
   const flagged = [];
   rows.forEach(r=>{
     const reasons = r.flags||[];   // worked out at upload time; raw notes/phone are never stored
@@ -18,7 +19,7 @@ async function renderFlags(){
 
   let html = `<div class="kpi-grid">`;
   Object.entries(chipMeta).forEach(([key,arr])=>{
-    html += `<div class="kpi kpi-clickable" data-flagkey="${key}" title="Click to see these calls"><div class="kpi-label">${arr[1]}</div><div class="kpi-value">${counts[key]}</div></div>`;
+    html += `<div class="kpi kpi-clickable flag-kpi flag-k-${key}" data-flagkey="${key}" title="Click to see these calls"><div class="kpi-label">${arr[1]}</div><div class="kpi-value">${counts[key]}</div></div>`;
   });
   html += `</div>`;
 

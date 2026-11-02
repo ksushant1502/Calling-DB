@@ -1,10 +1,11 @@
 // ===== AGGREGATION: shared roll-up helpers used by several tabs =====
-function renderLoading(){ document.getElementById('app').innerHTML = `<div class="empty-state"><span class="spinner"></span>Loading…</div>`; }
+function renderLoading(){ document.getElementById('app').innerHTML = `<div class="loading"><div class="sk sk-head"></div><div class="sk-row"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div><div class="sk sk-big"></div></div>`; }
 
 // ===================== AGGREGATION HELPERS =====================
 function lobInFilter(lob, typeId){
   typeId = typeId===undefined ? typeFilter : typeId;
   if(typeId==='all') return true;
+  if(Array.isArray(typeId)) return typeId.includes(campaignTypeOf(lob).id);   // a section = a list of types
   const t = CAMPAIGN_TYPES.find(x=>x.id===typeId);
   return !!t && t.lobs.includes(lob);
 }

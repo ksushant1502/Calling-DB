@@ -12,12 +12,12 @@ const NON_CONNECT = ['call not connected','not applicable','call drop','answerin
 const LOBS = ['Enterprise','Retention','Instamart','YBP','Experience','NCR Churn Survey','CityOps','Incoming','Other'];
 // The campaign types shown across the dashboard (in this order). Each LOB belongs to exactly one type.
 const CAMPAIGN_TYPES = [
-  {id:'acquisition', label:'New User Acquisition', lobs:['Enterprise','Instamart'], color:'#3b5bfd'},
-  {id:'retention',   label:'Retention',            lobs:['Retention','YBP'],        color:'#0f9a94'},
-  {id:'survey',      label:'Survey Calling',       lobs:['Experience'],             color:'#c23b78'},
-  {id:'ncrchurn',    label:'NCR Festival Churn Survey', lobs:['NCR Churn Survey'], color:'#8a4fd8'},
-  {id:'city',        label:'City Calling',         lobs:['CityOps'],                color:'#d98a0b'},
-  {id:'incoming',    label:'Incoming Customer Calls', lobs:['Incoming'],        color:'#5a6bd8'},
+  {id:'acquisition', label:'New User Acquisition', lobs:['Enterprise','Instamart'], color:'#2f6bff'},
+  {id:'retention',   label:'Retention',            lobs:['Retention','YBP'],        color:'#00a3a3'},
+  {id:'survey',      label:'Survey Calling',       lobs:['Experience'],             color:'#8a4fd8'},
+  {id:'ncrchurn',    label:'NCR Festival Churn Survey', lobs:['NCR Churn Survey'], color:'#a77be6'},
+  {id:'city',        label:'City Calling',         lobs:['CityOps'],                color:'#c97a00'},
+  {id:'incoming',    label:'Incoming Customer Calls', lobs:['Incoming'],        color:'#d4497a'},
   {id:'other',       label:'Other',                lobs:['Other'],                  color:'#7a8499'},
 ];
 function campaignTypeOf(lob){ return (CAMPAIGN_TYPES.find(t=>t.lobs.includes(lob)) || CAMPAIGN_TYPES[CAMPAIGN_TYPES.length-1]); }

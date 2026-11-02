@@ -148,7 +148,15 @@ function dedupeHint(){
 
 // ---- previous period of the same length (for "▲ 12% vs previous 7 days" on the Insights cards) ----
 function shiftDate(ymd, days){ const d=new Date(ymd+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+days); return d.toISOString().slice(0,10); }
+let prevCache = {key:'', val:null};
 async function loadPreviousPeriod(){
+  const key = range.start+'|'+range.end;
+  if(prevCache.key===key && prevCache.val) return prevCache.val;
+  const val = await loadPreviousPeriodRaw();
+  prevCache = {key, val};
+  return val;
+}
+async function loadPreviousPeriodRaw(){
   try{
     const n = Math.round((new Date(range.end+'T00:00:00Z')-new Date(range.start+'T00:00:00Z'))/86400000)+1;
     const pe = shiftDate(range.start,-1), ps = shiftDate(pe, -(n-1));
@@ -157,7 +165,7 @@ async function loadPreviousPeriod(){
     const camps = {};
     const add = (rows, src)=>(rows||[]).forEach(r=>{
       const d = mapDayDoc(r, src);
-      Object.entries(d.campaigns).forEach(([name,v])=>{ const x=camps[name]=camps[name]||{dials:0,connects:0,conv:0}; x.dials+=v.dials||0; x.connects+=v.connects||0; });
+      Object.entries(d.campaigns).forEach(([name,v])=>{ const x=camps[name]=camps[name]||{dials:0,connects:0,conv:0}; x.dials+=v.dials||0; x.connects+=v.connects||0; if(v.lob) x.lob=v.lob; });
     });
     add(c.data,'calls'); add(qu.data,'queue');
     cv.forEach(day=>Object.entries(day.byCampaign||{}).forEach(([name,v])=>{ const x=camps[name]=camps[name]||{dials:0,connects:0,conv:0}; x.conv+=v.count||0; }));

@@ -204,7 +204,7 @@ function showConvPreview(daySummaries){
       }
       toast(daySummaries.length>1 ? `Saved conversions for ${daySummaries.length} days` : 'Saved conversion data for '+daySummaries[0].date);
       root.innerHTML='';
-      await refreshTab();
+      prevCache={key:'',val:null}; await refreshTab();
     }catch(e){ toast('Save failed: '+(e.message||e.code||e)); btn.disabled=false; btn.textContent='Save to Dashboard'; progress.style.display='none'; }
   };
 }

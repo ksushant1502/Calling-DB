@@ -394,7 +394,7 @@ function showPreview(daySummaries){
       }
       toast(daySummaries.length>1 ? `Saved data for ${daySummaries.length} days` : 'Saved data for '+daySummaries[0].date);
       root.innerHTML='';
-      await refreshTab();
+      prevCache={key:'',val:null}; await refreshTab();
       startNextQueued();
     }catch(e){ toast('Save failed: '+(e.message||e.code||e)); btn.disabled=false; btn.textContent='Save to Dashboard'; progress.style.display='none'; }
   };

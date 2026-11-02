@@ -4,7 +4,7 @@ let insightsCampaignFilter='', insightsSearch='';
 async function renderInsights(opts){
   opts = opts || {};   // opts.container / opts.typeId let other pages (Conversions) embed the insights for one type
   const app = opts.container || document.getElementById('app');
-  if(dayDocs.length===0){ app.innerHTML=`<div class="empty-state">No data for this range.</div>`; return; }
+  if(dayDocs.length===0){ app.innerHTML=emptyRange(); return; }
   app.innerHTML = `<div class="empty-state"><span class="spinner"></span>Loading response detail…</div>`;
   const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob, opts.typeId));
   const hasConv = conversionDocs.length>0;
@@ -76,8 +76,8 @@ async function renderInsights(opts){
       ${kc('Conversion / 100 connects', per100===null?'—':per100.toFixed(1), prevPer100!==null?deltaPts(per100,prevPer100):'', '#0f9a94')}
     </div>`;
     // funnel
-    const steps=[['Dials',c.calls,'#3b5bfd'],['Connected',c.connected,'#7a56e8'],['Interested / hot',c.interested,'#0f9a94']];
-    if(hasConv) steps.push(['Converted',c.convTotal,'#12a066']);
+    const steps=[['Dials',c.calls,'#6b7a8c'],['Connected',c.connected,'#0092a8'],['Interested / hot',c.interested,'#0a7d90']];
+    if(hasConv) steps.push(['Converted',c.convTotal,'#0b5f6e']);
     const top=c.calls||1;
     const funnel = steps.map(([label,val,color],i)=>{
       const w=Math.max(val/top*100, val>0?5:0);
@@ -173,12 +173,12 @@ async function renderInsights(opts){
     const perDisp={}; c.rws.forEach(r=>{ const d=r.disposition||'—'; (perDisp[d]=perDisp[d]||{})[r.date]=(perDisp[d][r.date]||0)+1; });
     const order=Object.entries(c.disp).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
     const top=order.slice(0,5), rest=order.slice(5);
-    const PAL=['#12a066','#3b5bfd','#d98a0b','#7a56e8','#0f9a94'];
-    const ds=top.map((d,i)=>({label:d,data:dates.map(x=>(perDisp[d]||{})[x]||0),backgroundColor:PAL[i%PAL.length]}));
-    if(rest.length) ds.push({label:'Other',data:dates.map(x=>rest.reduce((n,d)=>n+((perDisp[d]||{})[x]||0),0)),backgroundColor:'#c4cad8'});
-    charts['cc-t-'+ci]=new Chart(el,{type:'bar',data:{labels:dates.map(d=>d.slice(5)),datasets:ds},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8}}},
-        scales:{x:{stacked:true,grid:{display:false},ticks:{color:dim}},y:{stacked:true,ticks:{color:dim},grid:{color:border}}}}});
+    const PAL=['#2f6bff','#00a3a3','#8a4fd8','#c97a00','#d4497a'];
+    const ds=top.map((d,i)=>({label:d,data:dates.map(x=>(perDisp[d]||{})[x]||0),backgroundColor:PAL[i%PAL.length],borderColor:'#fff',borderWidth:{top:1},maxBarThickness:26}));
+    if(rest.length) ds.push({label:'Other',data:dates.map(x=>rest.reduce((n,d)=>n+((perDisp[d]||{})[x]||0),0)),backgroundColor:'#cdd5de'});
+    charts['cc-t-'+ci]=new Chart(el,{type:'bar',data:{labels:dates.map(d=>fmtDay(d)),datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{usePointStyle:true,pointStyle:'circle',boxWidth:7,boxHeight:7,font:{size:11.5}}}},
+        scales:{x:{stacked:true,grid:{display:false},ticks:{color:dim,maxRotation:0,autoSkipPadding:10}},y:{stacked:true,ticks:{color:dim},grid:{color:border}}}}});
   };
   app.querySelectorAll('details.camp-ins').forEach((d,ci)=>{
     if(d.open) drawCampCharts(ci);

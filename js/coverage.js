@@ -1,6 +1,6 @@
 // ===== PAGE 7: Upload Status — which dates have each report uploaded (green) or missing (red) =====
-async function renderUploadStatus(){
-  const app=document.getElementById('app');
+async function renderUploadStatus(container){
+  const app=container||document.getElementById('app');
   const pull = (table)=> sb.from(table).select('date,file_name,uploaded_at').gte('date',range.start).lte('date',range.end);
   const rowsDef = [
     {key:'calls', label:'Campaign report', note:'Enterprise, Survey and Incoming calls (one file)', table:SOURCES.calls.days},
@@ -30,7 +30,7 @@ async function renderUploadStatus(){
     </div>`;
   }).join('');
 
-  app.innerHTML = sections + `<div class="hint">Green = data uploaded for that date. Red = nothing uploaded yet. Change the dates at the top right to check a different period. Click a red date to upload that day (rows from other dates in the file are ignored). A day with no calls (for example a holiday) also shows as missing. Hover over a green box to see the file name and when it was uploaded.</div>`;
+  app.innerHTML = sections + `<div class="hint">Green = data uploaded for that date. Red = nothing uploaded yet. Change the dates at the top to check a different period. Click a red date to upload that day (rows from other dates in the file are ignored). A day with no calls (for example a holiday) also shows as missing. Hover over a green box to see the file name and when it was uploaded.</div>`;
   app.querySelectorAll('.cv-chip.miss[data-report]').forEach(el=>{
     el.onclick=()=>{
       const rep=el.getAttribute('data-report'), date=el.getAttribute('data-date');

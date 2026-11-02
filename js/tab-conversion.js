@@ -47,7 +47,7 @@ function convTable(title, arr, total, firstCol){
 
 async function renderConversion(){
   const app=document.getElementById('app');
-  if(conversionDocs.length===0){ app.innerHTML=`<div class="empty-state">No conversion data for this range.${canWrite?' Use "Upload Conversion CSV" in the left menu.':''}</div>`; return; }
+  if(conversionDocs.length===0){ app.innerHTML=`<div class="empty-state">No conversion data for this range.${canWrite?' Use "Conversion CSV" at the top right.':''}</div>`; return; }
   app.innerHTML = `<div class="empty-state"><span class="spinner"></span>Loading conversions…</div>`;
   const rows = await loadConvRowsForRange();
   if(rows.length===0){ app.innerHTML=`<div class="empty-state">No conversion rows found for this range. If you uploaded before, upload the conversion file again.</div>`; return; }
