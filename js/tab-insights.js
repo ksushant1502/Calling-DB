@@ -212,11 +212,11 @@ async function renderInsights(opts){
       rws.slice(0,300).forEach(r=>{ dhtml+=`<tr><td>${escapeHtml(String(r.callId||'—'))}</td>${hasContacts()?`<td>${escapeHtml(r.phone||'—')}</td>`:''}<td>${escapeHtml(r.agent||'—')}</td><td>${escapeHtml(r.campaign||'—')}</td><td>${escapeHtml(r.disposition||'—')}</td>${hasContacts()?`<td>${escapeHtml(r.notes||'—')}</td>`:''}</tr>`; });
       dhtml += `</tbody></table>`;
       if(rws.length>300) dhtml += `<div class="hint">Showing first 300 of ${rws.length} matches.</div>`;
-      if(canWrite) dhtml += `<button id="exportInsight" style="margin-top:8px;">⬇ Export CSV (${rws.length})</button>`;
+      if(hasContacts()||canWrite) dhtml += `<button id="exportInsight" style="margin-top:8px;">⬇ Export CSV (${rws.length})</button>`;
       document.getElementById('insightDrillBody').innerHTML = dhtml;
       section.style.display = '';
       section.scrollIntoView({behavior:'smooth', block:'nearest'});
-      if(canWrite) document.getElementById('exportInsight').onclick = ()=> downloadCsv(`insight_${cn}_${q}_${ans}.csv`.replace(/[^\w.-]/g,'_'), ['callId','phone','agent','campaign','disposition','notes'], rws);
+      if(hasContacts()||canWrite) document.getElementById('exportInsight').onclick = ()=> downloadCsv(`insight_${cn}_${q}_${ans}.csv`.replace(/[^\w.-]/g,'_'), ['callId','phone','agent','campaign','disposition','notes'], rws);
     };
   });
 }

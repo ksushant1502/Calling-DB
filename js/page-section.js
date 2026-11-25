@@ -65,11 +65,12 @@ async function renderSection(sec){
   }
   const subs = `<div class="subtabs" role="tablist">${SUBTABS.map(s=>`<button role="tab" class="subtab ${activeSub===s.id?'active':''}" data-sub="${s.id}">${s.label}</button>`).join('')}</div>`;
   app.innerHTML = pageHead(sec.title, sec.desc, sec.color, chips) + subs + `<div id="secBody"></div>`;
-  app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSub=b.getAttribute('data-sub'); insightsCampaignFilter=''; renderTabNav(); renderSection(sec); });
+  app.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{ activeSub=b.getAttribute('data-sub'); insightsCampaignFilter=''; callsQ.page=0; renderTabNav(); renderSection(sec); });
   app.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ sectionPick[sec.id]=b.getAttribute('data-pick'); insightsCampaignFilter=''; renderSection(sec); });
   app.querySelectorAll('[data-city]').forEach(b=>b.onclick=()=>{ cityPick=b.getAttribute('data-city'); campaignCity=cityPick; renderSection(sec); });
   const body = document.getElementById('secBody');
   if(!dayDocs.length && !conversionDocs.length){ body.innerHTML = emptyRange(); return; }
+  if(activeSub==='calls'){ await renderCalls({container:body, types}); return; }
   if(activeSub==='insights'){ await renderInsights({container:body, typeId:types}); return; }
   if(activeSub==='agents'){ await renderAgents({container:body, types}); return; }
   if(activeSub==='flags'){ await renderFlags({container:body, typeId:types}); return; }
@@ -136,6 +137,7 @@ async function renderSectionSummary(sec, types, body){
     html += `<div class="card"><div class="card-head"><h2>Who converted</h2><span class="card-note">${fmtNum(convRows.length)} conversions</span></div>
       <div class="conv-grid">${convTable('By agent', countBy(convRows,'agent'), convRows.length, 'Agent')}${convTable('By city', countBy(convRows,'city'), convRows.length, 'City')}${convTable(sec.id==='retention'?'By queue':'By campaign', countBy(convRows,'campaign'), convRows.length, sec.id==='retention'?'Queue':'Campaign')}</div></div>`;
   }
+  html += convCustomersCard(convRows, sec);
   if(sec.id==='city'){
     html += `<div class="card"><div class="card-head"><h2>Disposition breakdown</h2><button id="cityDispBtn">Load breakdown</button></div><div id="cityDisp" class="hint">Shows how City Calling calls ended, for the city chosen above.</div></div>`;
   }
@@ -143,6 +145,7 @@ async function renderSectionSummary(sec, types, body){
   drawCallsTrend('secCalls', S.dates, S.dials, S.connects, sec.color);
   if(showConv) drawConvDaily('secConv', S.dates, S.convs);
   body.querySelectorAll('[data-camp]').forEach(r=>r.onclick=()=>{ insightsCampaignFilter=r.getAttribute('data-camp'); activeSub='insights'; renderTabNav(); renderSection(sec); window.scrollTo({top:0}); });
+  wireConvCustomers(convRows);
   const db = document.getElementById('cityDispBtn'); if(db) db.onclick = ()=>{ campaignCity = cityPick; loadCityDisposition(); };
 }
 

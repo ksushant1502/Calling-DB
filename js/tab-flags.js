@@ -8,7 +8,7 @@ async function renderFlags(opts){
   const rows = (await loadRowsForRange()).filter(r=>lobInFilter(r.lob, opts.typeId));
   const flagged = [];
   rows.forEach(r=>{
-    const reasons = r.flags||[];   // worked out at upload time; raw notes/phone are never stored
+    const reasons = r.flags||[];   // worked out at upload time
     if(reasons.length) flagged.push({...r, reasons});
   });
 
@@ -25,7 +25,7 @@ async function renderFlags(opts){
 
   html += `<div class="filter-bar">` + Object.entries(chipMeta).map(([key,arr])=>`<label><input type="checkbox" class="flagCk" value="${key}" checked> <span class="flag-chip ${arr[0]}">${arr[1]}</span></label>`).join('') + `</div>`;
 
-  html += `<div class="section" id="flagsTableSection"><h2>Flagged Calls <span id="flagsTableTitle" style="font-weight:500;color:var(--text-dim);"></span>${canWrite? '<button id="exportFlags" style="font-size:12px;">⬇ Export CSV</button>' : ''}</h2><div id="flagsTableWrap"></div></div>`;
+  html += `<div class="section" id="flagsTableSection"><h2>Flagged Calls <span id="flagsTableTitle" style="font-weight:500;color:var(--text-dim);"></span>${hasContacts()||canWrite? '<button id="exportFlags" style="font-size:12px;">⬇ Export CSV</button>' : ''}</h2><div id="flagsTableWrap"></div></div>`;
   app.innerHTML = html;
 
   function renderTable(){

@@ -56,3 +56,9 @@ function phoneKey(phone){
   const d=String(phone||'').replace(/\D/g,'').slice(-10);
   return d.length>=7 ? sha256Hex(PHONE_KEY_SALT+':'+d).slice(0,16) : '';
 }
+
+// every non-empty column of an uploaded CSV row, exactly as it was in the file (very long cells are cut at 4,000 characters)
+function rawRow(row){
+  const o={}; Object.entries(row||{}).forEach(([k,v])=>{ if(k==null||k==='') return; const t=String(v==null?'':v).trim(); if(t!=='') o[String(k).trim()]=t.length>4000?t.slice(0,4000)+'…':t; });
+  return o;
+}

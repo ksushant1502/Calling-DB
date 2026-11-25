@@ -107,7 +107,7 @@ function processConvRows(rows, map){
     if(city){ byCity[city]=byCity[city]||{count:0}; byCity[city].count++; }
     byType[type] = (byType[type]||0)+1;
     const phone = map.phone ? String(row[map.phone]||'').trim() : '';
-    kept.push({agent,campaign,city,type,phone});
+    kept.push({agent,campaign,city,type,phone,raw:rawRow(row)});
   });
   return {totalConversions:total, byAgent, byCampaign, byCity, byType, rows:kept, skipped};
 }
@@ -199,7 +199,7 @@ function showConvPreview(daySummaries){
         }, {onConflict:'date'});
         if(upErr) throw upErr;
         await replaceRows('conversion_rows', summary.date, summary.rows.map((r,n)=>({date:summary.date, n, agent:r.agent, campaign:r.campaign, city:r.city||null, type:r.type||null})));
-        if(REQUIRE_LOGIN) await replaceRows('conversion_contacts', summary.date, summary.rows.map((r,n)=>({date:summary.date, n, phone:r.phone||null})).filter(r=>r.phone));
+        await replaceRows('conversion_contacts', summary.date, summary.rows.map((r,n)=>({date:summary.date, n, phone:r.phone||null, raw:r.raw||{}})));
         delete convRowsCache[summary.date];
       }
       toast(daySummaries.length>1 ? `Saved conversions for ${daySummaries.length} days` : 'Saved conversion data for '+daySummaries[0].date);

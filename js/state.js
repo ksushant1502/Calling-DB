@@ -47,6 +47,7 @@ function sectionOfLob(lob){ return sectionOfType(campaignTypeOf(lob).id); }
 // sub-pages inside a section
 const SUBTABS = [
   {id:'summary',  label:'Summary'},
+  {id:'calls',    label:'Call details'},
   {id:'insights', label:'Insights & VoC'},
   {id:'agents',   label:'Agents'},
   {id:'flags',    label:'Flags'},
@@ -58,4 +59,5 @@ let flagsPick = 'all';
 let flagsFocus = '';   // open the Flags page showing only one flag (e.g. misconduct from Home)
 
 // phone/notes are only stored and shown when login is on and the person is an editor
-function hasContacts(){ return REQUIRE_LOGIN && canWrite; }
+// Phone numbers, notes and the full raw rows are saved and shown.
+function hasContacts(){ return true; }

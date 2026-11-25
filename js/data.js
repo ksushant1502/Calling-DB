@@ -70,9 +70,9 @@ async function loadRowsForDate(date){
   if(rowsCache[date]) return rowsCache[date];
   const [rawC, rawQ] = await Promise.all([ fetchAllRows(SOURCES.calls.rows, date), fetchAllRows(SOURCES.queue.rows, date) ]);
   // phone + notes live in a separate table that only editors can read; merge them in by source + row number
-  const contacts = (REQUIRE_LOGIN && canWrite) ? await fetchAllRows('call_contacts', date) : [];
+  const contacts = hasContacts() ? await fetchAllRows('call_contacts', date) : [];
   const byKey = {}; contacts.forEach(c=>{ byKey[(c.source||'calls')+':'+c.n]=c; });
-  const conv = (r, src)=>{ const k=byKey[src+':'+r.n]||{}; return {date, pkey:r.pkey||'', phone:k.phone||'', notes:k.notes||'', source:src, agent:r.agent, campaign:canonCampaign(r.campaign), lob:canonLob(r.campaign, r.lob), city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}; };
+  const conv = (r, src)=>{ const k=byKey[src+':'+r.n]||{}; return {date, n:r.n, raw:k.raw||null, pkey:r.pkey||'', phone:k.phone||'', notes:k.notes||'', source:src, agent:r.agent, campaign:canonCampaign(r.campaign), lob:canonLob(r.campaign, r.lob), city:r.city, callId:r.call_id, disposition:r.disposition, talkSec:r.talk_sec, flags:r.flags?r.flags.split(','):[], form:r.form||{}}; };
   const rows = rawC.map(r=>conv(r,'calls')).concat(rawQ.map(r=>conv(r,'queue')));
   rowsCache[date]=rows; return rows;
 }
@@ -132,8 +132,9 @@ async function applyUniqueOverrides(){
 }
 async function loadConvRowsForDate(date){
   if(convRowsCache[date]) return convRowsCache[date];
-  const raw = await fetchAllRows('conversion_rows', date);
-  const rows = raw.filter(r=>!isConvExcluded(r.campaign)).map(r=>({date:r.date, agent:r.agent, campaign:canonCampaign(r.campaign), city:r.city, type:r.type}));
+  const [raw, contacts] = await Promise.all([ fetchAllRows('conversion_rows', date), hasContacts() ? fetchAllRows('conversion_contacts', date) : Promise.resolve([]) ]);
+  const byN = {}; contacts.forEach(c=>{ byN[c.n]=c; });
+  const rows = raw.filter(r=>!isConvExcluded(r.campaign)).map(r=>{ const k=byN[r.n]||{}; return {date:r.date, agent:r.agent, campaign:canonCampaign(r.campaign), city:r.city, type:r.type, phone:k.phone||'', raw:k.raw||null}; });
   convRowsCache[date]=rows; return rows;
 }
 async function loadConvRowsForRange(){

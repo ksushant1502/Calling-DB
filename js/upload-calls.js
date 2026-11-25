@@ -206,7 +206,7 @@ function processRows(rows, map, defaultLob, defaultCity, source){
       if(connected){ agentLobConnectedCallIdSets[alKey]=agentLobConnectedCallIdSets[alKey]||new Set(); agentLobConnectedCallIdSets[alKey].add(callId); }
     }
 
-    // PRIVACY: phone and notes go into a separate editor-only table (call_contacts); the main rows never contain them.
+    // PRIVACY: phone, notes and the full original row go into a separate locked table (call_contacts); the main rows never contain them.
     const notesLower=notes.toLowerCase(), dispLower=String(disp).toLowerCase();
     const reasons=[];
     if(connected && talkSec>0 && talkSec<30){ flagCounts.short_connect++; reasons.push('short_connect'); }
@@ -216,7 +216,7 @@ function processRows(rows, map, defaultLob, defaultCity, source){
     if(keywordHit([notesLower,dispLower], HOT_KEYWORDS) && !/not\s*[-_ ]?\s*(interested|intrested)/.test(dispLower)){ flagCounts.hot_convert++; reasons.push('hot_convert'); }
 
     const pkey = isDedupeCampaign(campaign) ? phoneKey(phone) : '';
-    compactRows.push({n:compactRows.length,agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form,phone,notes,pkey});
+    compactRows.push({n:compactRows.length,agent,campaign,lob,city,callId,disposition:disp,talkSec,flags:reasons.join(','),form,phone,notes,pkey,raw:rawRow(row)});
   });
   Object.keys(campaigns).forEach(c=>{ campaigns[c].uniqueCallIds = callIdSets[c]?callIdSets[c].size:0; });
   Object.keys(agents).forEach(agent=>{
@@ -388,8 +388,9 @@ function showPreview(daySummaries){
           date: summary.date, n:r.n, agent:r.agent, campaign:r.campaign, lob:r.lob, city:r.city||null,
           call_id:r.callId||null, disposition:r.disposition||null, talk_sec:r.talkSec||0, flags:r.flags||null, form:r.form||{}, ...(r.pkey?{pkey:r.pkey}:{})
         })));
-        // phone + notes: separate table, readable by editors only
-        if(REQUIRE_LOGIN) await replaceRows('call_contacts', summary.date, summary.compactRows.filter(r=>r.phone||r.notes).map(r=>({date:summary.date, source:uploadSource, n:r.n, phone:r.phone||null, notes:r.notes||null})), {source:uploadSource});
+        // full details below go to the locked call_contacts table
+        // phone, notes and every column of the original file: separate table, only signed-in Yulu people can read it
+        await replaceRows('call_contacts', summary.date, summary.compactRows.map(r=>({date:summary.date, source:uploadSource, n:r.n, phone:r.phone||null, notes:r.notes||null, raw:r.raw||{}})), {source:uploadSource});
         delete rowsCache[summary.date];
       }
       toast(daySummaries.length>1 ? `Saved data for ${daySummaries.length} days` : 'Saved data for '+daySummaries[0].date);

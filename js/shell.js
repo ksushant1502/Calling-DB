@@ -34,7 +34,7 @@ function goTo(page, sub){
 function renderRoleBadge(){
   const wrap = document.getElementById('roleBadgeWrap');
   wrap.innerHTML = !REQUIRE_LOGIN
-    ? '<span class="badge admin" title="Login is switched off while the dashboard is being built">Build mode</span>'
+    ? ''
     : canWrite
     ? '<span class="badge admin">Editor</span>'
     : '<span class="badge public">View only</span>';
