@@ -4,6 +4,8 @@ const SUPABASE_URL = 'https://knnmfgmmlrcetejaktox.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtubm1mZ21tbHJjZXRlamFrdG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5ODkxOTcsImV4cCI6MjEwNjU2NTE5N30.tGkJi61ihHHSmgx1GY1yUELwtDrBAZxwK3JYywdg7Fc';
 // BUILD MODE: false = anyone with the link can view AND upload (no login). Phone numbers / notes are NOT saved in this mode.
 // Set to true once the website is finished and logins are set up (see README, "Turning login on").
+// Only the latest 30 days are kept: supabase_keep_30_days.sql deletes older data every night (e.g. on 25 Nov it keeps 25 Oct – 25 Nov).
+const KEEP_DAYS = 31;
 const REQUIRE_LOGIN = false;   // no login for now (single user). To add login later: run supabase_login_full_details.sql and set this to true
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

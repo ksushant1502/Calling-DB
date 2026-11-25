@@ -78,10 +78,11 @@ async function buildAlerts(secs, all){
   // a) missing uploads (up to yesterday — today's files usually come in later)
   const last = range.end < todayStr() ? range.end : addDays(todayStr(),-1);
   if(last >= range.start){
-    const days=[]; for(let d=range.start; d<=last && days.length<400; d=addDays(d,1)) days.push(d);
+    const first = range.start < addDays(todayStr(),-KEEP_DAYS) ? addDays(todayStr(),-KEEP_DAYS) : range.start;   // older days are deleted on purpose
+    const days=[]; for(let d=first; d<=last && days.length<400; d=addDays(d,1)) days.push(d);
     const defs = [ {key:'calls', label:'Campaign report', table:SOURCES.calls.days}, {key:'queue', label:'Retention report', table:SOURCES.queue.days}, {key:'conversion', label:'Conversion file', table:'conversion'} ];
     try{
-      const res = await Promise.all(defs.map(d=>sb.from(d.table).select('date').gte('date',range.start).lte('date',last)));
+      const res = await Promise.all(defs.map(d=>sb.from(d.table).select('date').gte('date',first).lte('date',last)));
       defs.forEach((d,i)=>{
         if(res[i].error) return;
         const have = new Set((res[i].data||[]).map(r=>r.date));

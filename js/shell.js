@@ -72,21 +72,21 @@ function renderRangeSummary(daysWithData){
 
 function renderFilterControls(){
   const el = document.getElementById('filterControls');
-  const presets = ['Today','Yesterday','Last 7 Days','This Month','Last Month'];
+  const presets = ['Today','Yesterday','Last 7 Days','This Month','Last 30 Days'];
   el.innerHTML = `<div class="seg">${presets.map(l=>`<button data-preset="${l}" class="${range.label===l?'active':''}">${l}</button>`).join('')}</div>
-    <div class="daterange ${range.label==='Custom'?'active':''}"><input type="date" id="customStart" value="${range.start}" aria-label="From"><span>→</span><input type="date" id="customEnd" value="${range.end}" aria-label="To"><button id="applyCustom" class="primary">Apply</button></div>`;
-  const t=todayStr(), lmEnd=addDays(startOfMonth(t),-1);
+    <div class="daterange ${range.label==='Custom'?'active':''}"><input type="date" id="customStart" value="${range.start}" min="${addDays(todayStr(),-KEEP_DAYS)}" aria-label="From"><span>→</span><input type="date" id="customEnd" value="${range.end}" min="${addDays(todayStr(),-KEEP_DAYS)}" aria-label="To" title="Only the latest 30 days are kept"><button id="applyCustom" class="primary">Apply</button></div>`;
+  const t=todayStr();
   const presetFns = {
     'Today': ()=>setRange(t, t, 'Today'),
     'Yesterday': ()=>setRange(addDays(t,-1), addDays(t,-1), 'Yesterday'),
     'Last 7 Days': ()=>setRange(addDays(t,-6), t, 'Last 7 Days'),
     'This Month': ()=>setRange(startOfMonth(t), t, 'This Month'),
-    'Last Month': ()=>setRange(startOfMonth(lmEnd), lmEnd, 'Last Month'),
+    'Last 30 Days': ()=>setRange(addDays(t,-KEEP_DAYS), t, 'Last 30 Days'),
   };
   Object.entries(presetFns).forEach(([label,fn])=>{ const b=el.querySelector(`[data-preset="${label}"]`); if(b) b.onclick=fn; });
   el.querySelector('#applyCustom').onclick = ()=>{
     const s=el.querySelector('#customStart').value, e=el.querySelector('#customEnd').value;
-    if(s&&e&&s<=e) setRange(s,e,'Custom'); else toast('Pick a valid start and end date');
+    if(s&&e&&s<=e){ if(s<addDays(todayStr(),-KEEP_DAYS)) toast('Only the latest 30 days are kept — older days have no data'); setRange(s,e,'Custom'); } else toast('Pick a valid start and end date');
   };
 }
 function setRange(start,end,label){ range={start,end,label}; renderFilterControls(); refreshTab(); }
